@@ -9,7 +9,7 @@ import fox from "./asset/resource/fox.webp";
 // DropdownWithButtons Component
 const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement, setDropdowns }) => {
   const [filter, setFilter] = useState(""); // State to manage the filter input
-  const [selectedAbility, setSelectedAbility] = useState(null); // State to manage the selected ability]
+  const [selectedAbility, setSelectedAbility] = useState(null); // State to manage the selected ability
 
   const filteredAbilities = abilities.filter(
     (a) =>
@@ -17,9 +17,9 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
       a.Emoji.toLowerCase().includes(filter.toLowerCase())
   );
 
-  const handleDropdownChange = (index, e) => {
+  const handleDropdownChange = (e) => {
     const selectedEmoji = e.target.value; // Extract the selected value from the event
-    const ability = abilities.find((a) => a.Emoji === selectedEmoji);
+    const ability = abilities.find((a) => a.Emoji === selectedEmoji); // Find the full ability object
     setSelectedAbility(ability);
 
     // Update the dropdowns state in the parent component
@@ -46,7 +46,7 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
       <select
         className="nisdropdown"
         value={selectedAbility ? selectedAbility.Emoji : ""}
-        onChange={(e) => handleDropdownChange(index, e)}
+        onChange={handleDropdownChange}
       >
         <option value="">Select an ability</option>
         {filteredAbilities.map((a) => (
@@ -138,7 +138,9 @@ const App = () => {
   const handleExport = () => {
     const dataToExport = dropdowns.map((dropdown) => ({
       id: dropdown.id,
-      selectedAbility: dropdown.selectedAbility,
+      selectedAbility: dropdown.selectedAbility
+        ? { Emoji: dropdown.selectedAbility.Emoji } // Only export the Emoji property
+        : null,
     }));
 
     const json = JSON.stringify(dataToExport, null, 2);
@@ -158,12 +160,24 @@ const App = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const importedData = JSON.parse(e.target.result);
+
+        // Clear current dropdowns and elements
+        setDropdowns([]);
+        setElements([]);
+
+        // Update the dropdowns state with imported data
         setDropdowns(
-          importedData.map((data) => ({
-            id: data.id,
-            selectedAbility: data.selectedAbility,
-          }))
+          importedData.map((data) => {
+            const ability = abilitiesData.find((a) => a.Emoji === data.selectedAbility.Emoji);
+            return {
+              id: data.id,
+              selectedAbility: ability || null, // Ensure the full ability object is set
+            };
+          })
         );
+
+        // Update the elements array to match the imported dropdowns
+        setElements(importedData.map((_, index) => ({ id: index })));
       };
       reader.readAsText(file);
     }
@@ -176,7 +190,7 @@ const App = () => {
 
       {/* Export and Import Buttons */}
       <div>
-        <button className="nisbutton" onClick={() => setShowFileNameInput(true)}>Export</button>
+        <button className="nisbutton" onClick={handleExport}>Export</button>
         <input
           type="file"
           accept="application/json"
@@ -193,20 +207,6 @@ const App = () => {
           </button>
         </label>
       </div>
-
-      {/* File Name Input for Export */}
-      {showFileNameInput && (
-        <div>
-          <input
-            type="text"
-            placeholder="Enter file name"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-          />
-          <button onClick={handleExport}>Save</button>
-          <button onClick={() => setShowFileNameInput(false)}>Cancel</button>
-        </div>
-      )}
 
       <p>Add your rotation below.</p>
       <hr style={{ margin: "20px 0", border: "1px solid #ccc" }} />

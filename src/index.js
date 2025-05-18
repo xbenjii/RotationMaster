@@ -7,7 +7,7 @@ import "./styles/main.scss"; // Assuming you have a CSS file for styling
 import fox from "./asset/resource/fox.webp";
 
 // DropdownWithButtons Component
-const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement }) => {
+const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement, setDropdowns }) => {
   const [filter, setFilter] = useState(""); // State to manage the filter input
   const [selectedAbility, setSelectedAbility] = useState(null); // State to manage the selected ability]
 
@@ -17,10 +17,19 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
       a.Emoji.toLowerCase().includes(filter.toLowerCase())
   );
 
-  const handleDropdownChange = (e) => {
-    const selectedEmoji = e.target.value; // Use Emoji instead of Title
+  const handleDropdownChange = (index, e) => {
+    const selectedEmoji = e.target.value; // Extract the selected value from the event
     const ability = abilities.find((a) => a.Emoji === selectedEmoji);
     setSelectedAbility(ability);
+
+    // Update the dropdowns state in the parent component
+    setDropdowns((prev) =>
+      prev.map((dropdown, i) =>
+        i === index
+          ? { ...dropdown, selectedAbility: ability } // Update the selected dropdown
+          : dropdown // Keep other dropdowns unchanged
+      )
+    );
   };
 
   return (
@@ -37,7 +46,7 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
       <select
         className="nisdropdown"
         value={selectedAbility ? selectedAbility.Emoji : ""}
-        onChange={handleDropdownChange}
+        onChange={(e) => handleDropdownChange(index, e)}
       >
         <option value="">Select an ability</option>
         {filteredAbilities.map((a) => (
@@ -85,8 +94,15 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
 
 // Main App Component
 const App = () => {
+  const [dropdowns, setDropdowns] = useState([
+    { id: 1, selectedAbility: null },
+    { id: 2, selectedAbility: null },
+  ]); // Example dropdown containers
+
   const [abilities, setAbilities] = useState([]);
   const [elements, setElements] = useState([]);
+  const [showFileNameInput, setShowFileNameInput] = useState(false); // Toggle for file name input
+  const [fileName, setFileName] = useState("dropdown-data"); // Default file name
 
   // Fetch abilities.json data
   useEffect(() => {
@@ -119,10 +135,79 @@ const App = () => {
     setElements(newElements);
   };
 
+  const handleExport = () => {
+    const dataToExport = dropdowns.map((dropdown) => ({
+      id: dropdown.id,
+      selectedAbility: dropdown.selectedAbility,
+    }));
+
+    const json = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rotations.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const importedData = JSON.parse(e.target.result);
+        setDropdowns(
+          importedData.map((data) => ({
+            id: data.id,
+            selectedAbility: data.selectedAbility,
+          }))
+        );
+      };
+      reader.readAsText(file);
+    }
+  };
+
   return (
     <div id="rotation">
       <img src={fox} alt="Fox" className="fox-image" />
       <h1>Welcome to the Rotations App</h1>
+
+      {/* Export and Import Buttons */}
+      <div>
+        <button className="nisbutton" onClick={() => setShowFileNameInput(true)}>Export</button>
+        <input
+          type="file"
+          accept="application/json"
+          onChange={handleImport}
+          style={{ display: "none" }}
+          id="import-file"
+        />
+        <label htmlFor="import-file">
+          <button
+            className="nisbutton"
+            onClick={() => document.getElementById("import-file").click()}
+          >
+            Import
+          </button>
+        </label>
+      </div>
+
+      {/* File Name Input for Export */}
+      {showFileNameInput && (
+        <div>
+          <input
+            type="text"
+            placeholder="Enter file name"
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+          />
+          <button onClick={handleExport}>Save</button>
+          <button onClick={() => setShowFileNameInput(false)}>Cancel</button>
+        </div>
+      )}
+
       <p>Add your rotation below.</p>
       <hr style={{ margin: "20px 0", border: "1px solid #ccc" }} />
 
@@ -135,6 +220,7 @@ const App = () => {
           moveUp={moveUp}
           moveDown={moveDown}
           removeElement={removeElement}
+          setDropdowns={setDropdowns} // Pass setDropdowns as a prop
         />
       ))}
 

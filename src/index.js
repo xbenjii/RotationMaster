@@ -137,7 +137,32 @@ const App = () => {
     // Save to localStorage
     localStorage.setItem("savedRotations", JSON.stringify(updatedRotations));
 
+    // Update selected rotation to the newly saved rotation
+    setSelectedRotation(rotationName);
+
     alert(`Rotation "${rotationName}" saved successfully!`);
+  };
+
+  const deleteRotation = () => {
+    if (!selectedRotation) {
+      alert("Please select a rotation to delete.");
+      return;
+    }
+
+    const updatedRotations = savedRotations.filter((r) => r.name !== selectedRotation);
+    setSavedRotations(updatedRotations);
+
+    // Save updated rotations to localStorage
+    localStorage.setItem("savedRotations", JSON.stringify(updatedRotations));
+
+    // Clear the selected rotation and rotation name
+    setSelectedRotation(null);
+    setRotationName("Untitled Rotation");
+
+    setElements([]);
+    setDropdowns([]);
+
+    alert(`Rotation "${selectedRotation}" deleted successfully!`);
   };
 
   const moveUp = (index) => {
@@ -233,7 +258,7 @@ const App = () => {
       );
       setElements(rotation.data.map((_, index) => ({ id: index })));
       setSelectedRotation(rotationName);
-      setSelectedRotation(rotationName);
+      setRotationName(rotationName);
     }
   };
 
@@ -278,7 +303,9 @@ const App = () => {
             </option>
           ))}
         </select>
-
+        <button className="nisbutton" onClick={deleteRotation} title="Delete Selected Rotation">
+          <FontAwesomeIcon icon={faTrashCan} />
+        </button>
         <button className="nisbutton" onClick={handleExport}>
           Export
         </button>
@@ -327,7 +354,7 @@ const App = () => {
           className="nisbutton clear-button"
           style={{ marginLeft: "10px" }}
         >
-          <i className="fas fa-trash" style={{ marginRight: "5px" }}></i> Clear All
+          <FontAwesomeIcon icon={faTrashCan} /> Clear All
         </button>
       </div>
     </div>

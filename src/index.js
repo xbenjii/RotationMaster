@@ -118,8 +118,35 @@ const App = () => {
   const [rotationName, setRotationName] = useState("Untitled Rotation"); // Editable rotation name
 
   useEffect(() => {
-    setAbilities(abilitiesData); // Load abilities data
+    const abilitiesDataUrl = "http://localhost:3000/abilities.json";
 
+    fetch(abilitiesDataUrl)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          console.log("Fetched abilities:", data);
+          setAbilities(data);
+        } else {
+          console.error("Fetched data is not an array:", data);
+          setAbilities([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching abilities.json:", error);
+        setAbilities([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    console.log("Updated abilities state:", abilities);
+  }, [abilities]); // Log whenever the abilities state changes
+
+  useEffect(() => {
     // Load saved rotations from localStorage
     const cachedRotations = localStorage.getItem("savedRotations");
     if (cachedRotations) {
@@ -138,7 +165,7 @@ const App = () => {
       alert("Please provide a valid rotation name before saving.");
       return;
     }
-    
+
     const newRotation = {
       name: rotationName,
       data: dropdowns.map((dropdown) => ({
@@ -214,7 +241,7 @@ const App = () => {
     const newDropdowns = dropdowns.filter((_, i) => i !== index);
     setDropdowns(newDropdowns);
   };
-  
+
   const handleExport = () => {
     const dataToExport = dropdowns.map((dropdown) => ({
       id: dropdown.id,
@@ -248,7 +275,7 @@ const App = () => {
         // Update the dropdowns state with imported data
         setDropdowns(
           importedData.map((data) => {
-            const ability = abilitiesData.find((a) => a.Emoji === data.selectedAbility.Emoji);
+            const ability = abilities.find((a) => a.Emoji === data.selectedAbility?.Emoji);
             return {
               id: data.id,
               selectedAbility: ability || null,
@@ -268,7 +295,7 @@ const App = () => {
     if (rotation) {
       setDropdowns(
         rotation.data.map((data) => {
-          const ability = abilitiesData.find((a) => a.Emoji === data.selectedAbility.Emoji);
+          const ability = abilities.find((a) => a.Emoji === data.selectedAbility?.Emoji);
           return {
             id: data.id,
             selectedAbility: ability || null,

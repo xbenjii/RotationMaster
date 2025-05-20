@@ -118,7 +118,7 @@ const App = () => {
   const [rotationName, setRotationName] = useState("Untitled Rotation"); // Editable rotation name
 
   useEffect(() => {
-    const abilitiesDataUrl = "http://localhost:3000/abilities.json";
+    const abilitiesDataUrl = "./abilities.json";
 
     fetch(abilitiesDataUrl)
       .then((response) => {

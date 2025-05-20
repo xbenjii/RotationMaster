@@ -1,5 +1,6 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   mode: 'development',
@@ -55,6 +56,12 @@ module.exports = {
       title: 'Rotations',
       filename: 'index.html',
       template: path.resolve(__dirname, 'src', 'template.html'),
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: path.resolve(__dirname, 'src', 'icon.png'), to: 'icon.png' }, // Copy icon.png
+        { from: path.resolve(__dirname, 'src', 'appconfig.json'), to: 'appconfig.json' }, // Copy appconfig.json
+      ],
     }),
   ]
 }

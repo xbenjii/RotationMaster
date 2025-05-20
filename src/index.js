@@ -7,9 +7,8 @@ import "./styles/main.scss"; // Assuming you have a CSS file for styling
 import fox from "./asset/resource/fox.webp";
 
 // DropdownWithButtons Component
-const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement, setDropdowns }) => {
+const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement, setDropdowns, dropdown }) => {
   const [filter, setFilter] = useState(""); // State to manage the filter input
-  const [selectedAbility, setSelectedAbility] = useState(null); // State to manage the selected ability
 
   const filteredAbilities = abilities.filter(
     (a) =>
@@ -20,7 +19,6 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
   const handleDropdownChange = (e) => {
     const selectedEmoji = e.target.value; // Extract the selected value from the event
     const ability = abilities.find((a) => a.Emoji === selectedEmoji); // Find the full ability object
-    setSelectedAbility(ability);
 
     // Update the dropdowns state in the parent component
     setDropdowns((prev) =>
@@ -45,7 +43,7 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
       {/* Dropdown */}
       <select
         className="nisdropdown"
-        value={selectedAbility ? selectedAbility.Emoji : ""}
+        value={dropdown.selectedAbility ? dropdown.selectedAbility.Emoji : ""}
         onChange={handleDropdownChange}
       >
         <option value="">Select an ability</option>
@@ -57,10 +55,10 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
       </select>
 
       {/* Display selected ability details */}
-      {selectedAbility && (
+      {dropdown.selectedAbility && (
         <img
-          src={selectedAbility.Src}
-          alt={selectedAbility.Emoji}
+          src={dropdown.selectedAbility.Src}
+          alt={dropdown.selectedAbility.Emoji}
           className="ability-image"
         />
       )}
@@ -221,6 +219,7 @@ const App = () => {
           moveDown={moveDown}
           removeElement={removeElement}
           setDropdowns={setDropdowns} // Pass setDropdowns as a prop
+          dropdown={dropdowns[index]} // Pass the corresponding dropdown object
         />
       ))}
 

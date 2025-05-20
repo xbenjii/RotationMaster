@@ -5,6 +5,9 @@ import { faChevronUp, faChevronDown, faTrashCan } from "@fortawesome/free-solid-
 import abilitiesData from "./asset/abilities.json"; // Assuming abilities.json is in the same directory
 import "./styles/main.scss"; // Assuming you have a CSS file for styling
 import fox from "./asset/resource/fox.webp";
+import * as A1 from 'alt1/base'
+import "./appconfig.json";
+import "./icon.png";
 
 // DropdownWithButtons Component
 const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement, setDropdowns, dropdown }) => {
@@ -92,6 +95,21 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
 
 // Main App Component
 const App = () => {
+  if (typeof window !== "undefined" && window.process && window.process.type) {
+    const A1 = require("alt1/base");
+    try {
+      A1.identifyApp("appconfig.json");
+    } catch (error) {
+      console.error("Failed to initialize Alt1:", error);
+    }
+  } else {
+    const addAppUrl = `alt1://addapp/${new URL("./appconfig.json", document.location.href).href}`;
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `Alt1 not detected, click <a href='${addAppUrl}'>here</a> to add this app to Alt1`
+    );
+  }
+
   const [dropdowns, setDropdowns] = useState([]);
   const [abilities, setAbilities] = useState([]);
   const [elements, setElements] = useState([]);

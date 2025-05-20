@@ -14,6 +14,7 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name][contenthash].js',
     clean: true,
+    library: { type: "umd", name: "RotationMaster" }
   },
   // prevent webpack from bundling these imports (alt1 libs can use them when running in nodejs)
   externals: [

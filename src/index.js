@@ -92,11 +92,7 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
 
 // Main App Component
 const App = () => {
-  const [dropdowns, setDropdowns] = useState([
-    { id: 1, selectedAbility: null },
-    { id: 2, selectedAbility: null },
-  ]); // Example dropdown containers
-
+  const [dropdowns, setDropdowns] = useState([]); // Initialize as an empty array
   const [abilities, setAbilities] = useState([]);
   const [elements, setElements] = useState([]);
   const [showFileNameInput, setShowFileNameInput] = useState(false); // Toggle for file name input
@@ -109,7 +105,11 @@ const App = () => {
 
   // Function to add a new DropdownWithButtons
   const addElement = () => {
-    setElements([...elements, {id : elements.length}]); // Add a new empty object to the elements array
+    const newElement = { id: elements.length };
+    setElements([...elements, newElement]); // Add a new element to the elements array
+
+    // Add a corresponding dropdown object to the dropdowns state
+    setDropdowns((prev) => [...prev, { id: newElement.id, selectedAbility: null }]);
   };
 
   const moveUp = (index) => {
@@ -117,6 +117,10 @@ const App = () => {
       const newElements = [...elements];
       [newElements[index - 1], newElements[index]] = [newElements[index], newElements[index - 1]]; // Swap logic
       setElements(newElements);
+
+      const newDropdowns = [...dropdowns];
+      [newDropdowns[index - 1], newDropdowns[index]] = [newDropdowns[index], newDropdowns[index - 1]]; // Swap logic
+      setDropdowns(newDropdowns);
     }
   };
 
@@ -125,12 +129,19 @@ const App = () => {
       const newElements = [...elements];
       [newElements[index + 1], newElements[index]] = [newElements[index], newElements[index + 1]]; // Swap logic
       setElements(newElements);
+
+      const newDropdowns = [...dropdowns];
+      [newDropdowns[index + 1], newDropdowns[index]] = [newDropdowns[index], newDropdowns[index + 1]]; // Swap logic
+      setDropdowns(newDropdowns);
     }
   };
 
   const removeElement = (index) => {
     const newElements = elements.filter((_, i) => i !== index);
     setElements(newElements);
+
+    const newDropdowns = dropdowns.filter((_, i) => i !== index);
+    setDropdowns(newDropdowns);
   };
 
   const handleExport = () => {
@@ -230,7 +241,6 @@ const App = () => {
     </div>
   );
 };
-
 // Render the App component into the DOM
 const rotationDiv = document.getElementById("rotation");
 if (rotationDiv) {

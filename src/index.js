@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronUp, faChevronDown, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faPatreon } from '@fortawesome/free-brands-svg-icons';
 import abilitiesData from "./asset/abilities.json"; // Assuming abilities.json is in the same directory
 import "./styles/main.scss"; // Assuming you have a CSS file for styling
 import fox from "./asset/resource/fox.webp";
@@ -311,7 +312,7 @@ const App = () => {
   return (
     <div id="rotation">
       <img src={fox} alt="Fox" className="fox-image" />
-      <h1>Welcome to the Rotations App</h1>
+      <h1>Welcome to the Rotations Master</h1>
 
       {/* Rotation Name Input */}
       <div style={{ marginBottom: "10px" }}>
@@ -398,12 +399,22 @@ const App = () => {
             setElements([]);
             setDropdowns([]);
           }}
-          className="nisbutton clear-button"
+          className="nisbutton"
           style={{ marginLeft: "10px" }}
         >
           <FontAwesomeIcon icon={faTrashCan} /> Clear All
         </button>
       </div>
+
+      <hr style={{ margin: "20px 0", border: "1px solid #ccc" }} />
+      <a
+        href="https://patreon.com/IMEllamental?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="subtle-link"
+      >
+        <FontAwesomeIcon icon={faPatreon} /> Support on Patreon
+      </a>
     </div>
   );
 };

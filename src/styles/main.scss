@@ -79,3 +79,14 @@ html, body {
 {
   width: 5rem
 }
+
+.subtle-link {
+  color: #888; 
+  text-decoration: none; /* Removes underline */
+  font-size: 10px; /* Adjust font size */
+}
+
+.subtle-link:hover {
+  text-decoration: underline; /* Adds underline on hover */
+  color: #f1f1f1;
+}

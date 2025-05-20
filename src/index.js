@@ -241,6 +241,7 @@ const App = () => {
         setElements(importedData.map((_, index) => ({ id: index })));
       };
       reader.readAsText(file);
+      setRotationName(file.name);
     }
   };
 
@@ -273,6 +274,7 @@ const App = () => {
           Rotation Name:
         </label>
         <input
+          className="nisinput"
           id="rotation-name"
           type="text"
           value={rotationName}

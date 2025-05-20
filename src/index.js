@@ -238,6 +238,16 @@ const App = () => {
       <button onClick={addElement} className="nisbutton add-button" style={{ marginTop: "10px" }}>
         Add New
       </button>
+      <button
+        onClick={() => {
+          setElements([]); // Clear all elements
+          setDropdowns([]); // Clear all dropdowns
+        }}
+        className="nisbutton clear-button"
+        style={{ marginLeft: "10px" }}
+      >
+        <i className="fas fa-trash" style={{ marginRight: "5px" }}></i> Clear All
+      </button>
     </div>
   );
 };

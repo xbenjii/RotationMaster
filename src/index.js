@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronUp, faChevronDown, faTrashCan } from "@fortawesome/free-solid-svg-icons";
-import { faPatreon } from '@fortawesome/free-brands-svg-icons';
-import abilitiesData from "./asset/abilities.json"; // Assuming abilities.json is in the same directory
-import "./styles/main.scss"; // Assuming you have a CSS file for styling
+import { faPatreon } from "@fortawesome/free-brands-svg-icons";
+import abilitiesData from "./asset/abilities.json";
+import "./styles/main.scss";
 import fox from "./asset/resource/fox.webp";
-import * as A1 from 'alt1/base'
+import * as A1 from "alt1/base";
 import "./appconfig.json";
 import "./icon.png";
 
@@ -154,6 +154,53 @@ const App = () => {
       setSavedRotations(JSON.parse(cachedRotations));
     }
   }, []);
+
+  useEffect(() => {
+    if (window.alt1) {
+      try {
+        // Ensure Alt1 overlay permission is granted
+        if (!alt1.permissionOverlay) {
+          alert("Overlay permission is not granted. Please enable overlay permissions in Alt1.");
+          return;
+        }
+
+        // Get the RuneScape game client dimensions
+        const gameWidth = alt1.rsWidth;
+        const gameHeight = alt1.rsHeight;
+
+        // Calculate the center position
+        const overlayWidth = 300; // Adjust this to match your overlay's width
+        const overlayHeight = 100; // Adjust this to match your overlay's height
+        const centerX = Math.floor((gameWidth - overlayWidth) / 2);
+        const centerY = Math.floor((gameHeight - overlayHeight) / 2);
+
+        // Generate the overlay content as an array of image URLs
+        const overlayImages = dropdowns
+          .filter((dropdown) => dropdown.selectedAbility)
+          .map((dropdown) => dropdown.selectedAbility.Src);
+
+        // Skip overlay update if no valid content
+        if (overlayImages.length === 0) {
+          console.warn("No abilities selected. Skipping overlay update.");
+          return;
+        }
+
+        // Clear any existing overlay group
+        alt1.overLayClearGroup("rotationOverlay");
+
+        // Render the overlay content
+        alt1.overLaySetGroupZIndex('rotationOverlay', 1);
+        //alt1.overLaySetGroup("rotationOverlay", overlayImages, {
+        //  x: centerX,
+        //  y: centerY,
+        //  width: overlayWidth,
+        //  height: overlayHeight,
+        //});
+      } catch (error) {
+        console.error("Failed to update Alt1 overlay:", error);
+      }
+    }
+  }, [dropdowns]);
 
   const addElement = () => {
     const newElement = { id: elements.length };
@@ -309,6 +356,21 @@ const App = () => {
     }
   };
 
+  // Update the overlay whenever dropdowns change
+  useEffect(() => {
+    const overlay = document.getElementById("overlay");
+    if (overlay) {
+      const images = dropdowns
+        .filter((dropdown) => dropdown.selectedAbility)
+        .map(
+          (dropdown) =>
+            `<img src="${dropdown.selectedAbility.Src}" alt="${dropdown.selectedAbility.Emoji}" class="overlay-image" />`
+        )
+        .join(" > ");
+      overlay.innerHTML = images;
+    }
+  }, [dropdowns]);
+
   return (
     <div id="rotation">
       <img src={fox} alt="Fox" className="fox-image" />
@@ -390,6 +452,7 @@ const App = () => {
         />
       ))}
 
+      <div id="overlay" className="overlay"></div>
       <div style={{ marginTop: "10px" }}>
         <button onClick={addElement} className="nisbutton add-button">
           Add New
@@ -424,4 +487,4 @@ const rotationDiv = document.getElementById("rotation");
 if (rotationDiv) {
   const root = ReactDOM.createRoot(rotationDiv); // Use createRoot for React 18+
   root.render(<App />);
-}
+};

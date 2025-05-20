@@ -96,6 +96,7 @@ module.exports = {
       patterns: [
         { from: path.resolve(__dirname, 'src', 'icon.png'), to: 'icon.png' }, // Copy icon.png
         { from: path.resolve(__dirname, 'src', 'appconfig.json'), to: 'appconfig.json' }, // Copy appconfig.json
+        { from: path.resolve(__dirname, 'src/asset/resource/abilities'), to: path.resolve(__dirname, 'dist/asset/resource/abilities') },
       ],
     }),
   ],

@@ -95,7 +95,7 @@ const DropdownWithButtons = ({ abilities, index, moveUp, moveDown, removeElement
 
 // Main App Component
 const App = () => {
-  if (typeof window !== "undefined" && window.process && window.process.type) {
+  if (window.alt1) {
     const A1 = require("alt1/base");
     try {
       A1.identifyApp("appconfig.json");

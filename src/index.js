@@ -6,7 +6,6 @@ import { faPatreon } from "@fortawesome/free-brands-svg-icons";
 import abilitiesData from "./asset/abilities.json";
 import "./styles/main.scss";
 import fox from "./asset/resource/fox.webp";
-import * as A1 from "alt1/base";
 import "./appconfig.json";
 import "./icon.png";
 
@@ -154,6 +153,7 @@ const App = () => {
       setSavedRotations(JSON.parse(cachedRotations));
     }
   }, []);
+
 
   useEffect(() => {
     if (window.alt1) {
@@ -356,10 +356,10 @@ const App = () => {
     }
   };
 
-  // Update the overlay whenever dropdowns change
   useEffect(() => {
     const overlay = document.getElementById("overlay");
     if (overlay) {
+      // Update overlay content
       const images = dropdowns
         .filter((dropdown) => dropdown.selectedAbility)
         .map(
@@ -370,7 +370,7 @@ const App = () => {
       overlay.innerHTML = images;
     }
   }, [dropdowns]);
-
+  
   return (
     <div id="rotation">
       <img src={fox} alt="Fox" className="fox-image" />

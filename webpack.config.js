@@ -16,7 +16,6 @@ module.exports = {
     clean: true,
     library: { type: "umd", name: "RotationMaster" }
   },
-  // prevent webpack from bundling these imports (alt1 libs can use them when running in nodejs)
   externals: [
     "sharp",
     "canvas",
@@ -49,8 +48,8 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             presets: [
-              '@babel/preset-env', // Modern JavaScript
-              '@babel/preset-react', // React
+              '@babel/preset-env',
+              '@babel/preset-react',
             ],
           },
         },
@@ -68,13 +67,11 @@ module.exports = {
         test: /\.css$/,
         use: ["style-loader", "css-loader"]
       },
-      // Exclude .html files from asset/resource
       {
         test: /\.(json)$/,
         type: "asset/resource",
         generator: { filename: "[base]" }
       },
-      // file types useful for writing alt1 apps, make sure these two loader come after any other json or png loaders, otherwise they will be ignored
       {
         test: /\.data\.png$/,
         loader: "alt1/imagedata-loader",
@@ -91,11 +88,12 @@ module.exports = {
       title: 'Rotations',
       filename: 'index.html',
       template: path.resolve(__dirname, 'src', 'template.html'),
+      chunks: ['bundle'], // Include only the main bundle
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: path.resolve(__dirname, 'src', 'icon.png'), to: 'icon.png' }, // Copy icon.png
-        { from: path.resolve(__dirname, 'src', 'appconfig.json'), to: 'appconfig.json' }, // Copy appconfig.json
+        { from: path.resolve(__dirname, 'src', 'icon.png'), to: 'icon.png' },
+        { from: path.resolve(__dirname, 'src', 'appconfig.json'), to: 'appconfig.json' },
         { from: path.resolve(__dirname, 'src/asset/resource/abilities'), to: path.resolve(__dirname, 'dist/asset/resource/abilities') },
       ],
     }),

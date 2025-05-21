@@ -19,9 +19,19 @@ Then when you are happy you can resize the window to show only the images, and p
 
 ![image](https://github.com/user-attachments/assets/c7f17164-4daf-4153-9f8a-1749a927d410)
 
-Future Aims for the project:
-- With the help of the (PVME Discord)[https://discord.gg/pvme] I indent to populate some default rotations for popular bosses/loadouts and have them available in the app.
+## Future Aims for the project:
+- With the help of the [PVME Discord](https://discord.gg/pvme) I indent to populate some default rotations for popular bosses/loadouts and have them available in the app.
 - Overlay, My intention is for the cheat sheet to be a seperate overlay, with slight transparency, as well as the ability to change the size of the images for more customization.
 
-Long term goals:
+## Long term goals:
 - If this project proves popular enough I will look at updating it to have dynamic cheat sheets so that once you activate an ability it fades slightly from the cheatsheet and highlights the next ability slightly.
+
+<hr/>
+
+## Special thanks to:
+
+[RS3 Vikings](Discord.gg/rs3vikings) for being a great clan who are willing to be guinea pigs/testers
+
+and
+
+[PVME Discord](https://discord.gg/pvme) for allowing me to use their images and helping with rotations.

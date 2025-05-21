@@ -9,7 +9,9 @@ install on alt1: alt1://addapp/https://ellamental2.github.io/RotationMaster/appc
 # What does it do?
 
 The basic inspiration for Rotation Master is to easilly be able to display a "cheat sheet" of your rotation over your runescape screen, instead of having to look at another screen.
-You can set up your rotation in the window when it opens by adding new abilities and selecting from the dropdowns
+You can set up your rotation in the window when it opens by adding new abilities and selecting from the dropdowns.
+
+This idea expanded so you can now share rotations via a json file and the export/import buttons.
 
 ![image](https://github.com/user-attachments/assets/bfbda0de-2c64-425d-ac6a-86e2c95f7890)
 

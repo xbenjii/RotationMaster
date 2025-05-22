@@ -1,0 +1,16 @@
+:root {
+  --brightness:,75;
+}
+
+body {
+  display: block;
+  padding: 0 .5rem;
+  background-color: #0F0F0F;
+  background-image: url("/asset/nis/bg.png");
+  color: #FFFFFF;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 0;
+  opacity: 1;
+}
+

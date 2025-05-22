@@ -1,14 +1,13 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 /**
  * @type {import("webpack").Configuration}
  */
 module.exports = {
-  mode: 'development',
   entry: {
-    bundle: path.resolve(__dirname, 'src', 'index.js'),
+    //each entrypoint results in an output file
+    //so this results in an output file called 'main.js' which is built from src/index.ts
+    main: './src/index.ts'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -16,86 +15,40 @@ module.exports = {
     clean: true,
     library: { type: "umd", name: "RotationMaster" }
   },
-  externals: [
-    "sharp",
-    "canvas",
-    "electron/common"
-  ],
-  resolve: {
-    extensions: [".wasm", ".tsx", ".ts", ".mjs", ".jsx", ".js"]
-  },
-  devtool: 'source-map',
-  devServer: {
-    static: {
-      directory: path.resolve(__dirname, 'dist'),
-    },
-    port: 3000,
-    open: true,
-    hot: true,
-    compress: true,
-    historyApiFallback: true,
-  },
-  module: {
-    rules: [
-      {
-        test: /\.scss$/,
-        use: ['style-loader', 'css-loader', 'sass-loader'],
-      },
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: [
-              '@babel/preset-env',
-              '@babel/preset-react',
-            ],
-          },
-        },
-      },
-      {
-        test: /\.(png|jpg|jpeg|gif|webp)$/,
-        type: "asset/resource",
-        generator: { filename: "[base]" }
-      },
-      {
-        test: /\.tsx?$/,
-        loader: "ts-loader"
-      },
-      {
-        test: /\.css$/,
-        use: ["style-loader", "css-loader"]
-      },
-      {
-        test: /\.(json)$/,
-        type: "asset/resource",
-        generator: { filename: "[base]" }
-      },
-      {
-        test: /\.data\.png$/,
-        loader: "alt1/imagedata-loader",
-        type: "javascript/auto"
-      },
-      {
-        test: /\.fontmeta.json/,
-        loader: "alt1/font-loader"
-      }
-    ],
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      title: 'Rotations',
-      filename: 'index.html',
-      template: path.resolve(__dirname, 'src', 'template.html'),
-      chunks: ['bundle'], // Include only the main bundle
-    }),
-    new CopyWebpackPlugin({
-      patterns: [
-        { from: path.resolve(__dirname, 'src', 'icon.png'), to: 'icon.png' },
-        { from: path.resolve(__dirname, 'src', 'appconfig.json'), to: 'appconfig.json' },
-        { from: path.resolve(__dirname, 'src/asset/resource/abilities'), to: path.resolve(__dirname, 'dist/asset/resource/abilities') },
-      ],
-    }),
-  ],
+	devtool: false,
+	mode: process.env.NODE_ENV || 'development',
+	// prevent webpack from bundling these imports (alt1 libs can use them when running in nodejs)
+	externals: ['sharp', 'canvas', 'electron/common'],
+	resolve: {
+		extensions: ['.wasm', '.tsx', '.ts', '.mjs', '.jsx', '.js'],
+	},
+	module: {
+		// The rules section tells webpack what to do with different file types when you import them from js/ts
+		rules: [
+			{ test: /\.tsx?$/, loader: 'ts-loader' },
+			{ test: /\.css$/, use: ['style-loader', 'css-loader'] },
+			{
+				test: /\.scss$/,
+				use: ['style-loader', 'css-loader', 'sass-loader'],
+			},
+			// type:"asset" means that webpack copies the file and gives you an url to them when you import them from js
+			{
+				test: /\.(png|jpg|jpeg|gif|webp)$/,
+				type: 'asset/resource',
+				generator: { filename: '[base]' },
+			},
+			{
+				test: /\.(html|json)$/,
+				type: 'asset/resource',
+				generator: { filename: '[base]' },
+			},
+			// file types useful for writing alt1 apps, make sure these two loader come after any other json or png loaders, otherwise they will be ignored
+			{
+				test: /\.data\.png$/,
+				loader: 'alt1/imagedata-loader',
+				type: 'javascript/auto',
+			},
+			{ test: /\.fontmeta.json/, loader: 'alt1/font-loader' },
+		],
+	},
 };

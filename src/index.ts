@@ -489,11 +489,11 @@ const handleToggleDetails = () => {
 
   if (detailsAreHidden) {
     detailsContainer.style.display = 'block';
-    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
   } 
   else {
     detailsContainer.style.display = 'none';
-    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
   }
 
   detailsAreHidden = !detailsAreHidden;

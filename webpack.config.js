@@ -1,101 +1,86 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
+const webpack = require('webpack');
 
-/**
- * @type {import("webpack").Configuration}
- */
 module.exports = {
-  mode: 'development',
-  entry: {
-    bundle: path.resolve(__dirname, 'src', 'index.js'),
-  },
+  entry: './src/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name][contenthash].js',
     clean: true,
-    library: { type: "umd", name: "RotationMaster" }
   },
-  externals: [
-    "sharp",
-    "canvas",
-    "electron/common"
-  ],
-  resolve: {
-    extensions: [".wasm", ".tsx", ".ts", ".mjs", ".jsx", ".js"]
-  },
-  devtool: 'source-map',
+  mode: 'development',
   devServer: {
     static: {
       directory: path.resolve(__dirname, 'dist'),
     },
     port: 3000,
-    open: true,
+    open: false,
     hot: true,
     compress: true,
-    historyApiFallback: true,
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+    fallback: {
+      util: require.resolve('util/'),
+    },
+    fallback: {
+      "electron/common": false, // Mock the module
+    },
   },
   module: {
     rules: [
       {
-        test: /\.scss$/,
-        use: ['style-loader', 'css-loader', 'sass-loader'],
-      },
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: [
-              '@babel/preset-env',
-              '@babel/preset-react',
-            ],
-          },
-        },
-      },
-      {
-        test: /\.(png|jpg|jpeg|gif|webp)$/,
-        type: "asset/resource",
-        generator: { filename: "[base]" }
-      },
-      {
         test: /\.tsx?$/,
-        loader: "ts-loader"
+        use: 'ts-loader',
+        exclude: /node_modules/,
       },
       {
         test: /\.css$/,
-        use: ["style-loader", "css-loader"]
+        use: ['style-loader', 'css-loader'],
       },
       {
-        test: /\.(json)$/,
-        type: "asset/resource",
-        generator: { filename: "[base]" }
+        test: /\.scss$/, // Add this rule for SCSS files
+        use: ['style-loader', 'css-loader', 'sass-loader'],
       },
       {
-        test: /\.data\.png$/,
-        loader: "alt1/imagedata-loader",
-        type: "javascript/auto"
+        test: /\.(png|jpg|jpeg|gif|webp)$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'asset/resource/[name][ext]',
+        },
       },
-      {
-        test: /\.fontmeta.json/,
-        loader: "alt1/font-loader"
-      }
     ],
   },
   plugins: [
+    new NodePolyfillPlugin(),
     new HtmlWebpackPlugin({
-      title: 'Rotations',
+      template: './src/index.html',
       filename: 'index.html',
-      template: path.resolve(__dirname, 'src', 'template.html'),
-      chunks: ['bundle'], // Include only the main bundle
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: path.resolve(__dirname, 'src', 'icon.png'), to: 'icon.png' },
-        { from: path.resolve(__dirname, 'src', 'appconfig.json'), to: 'appconfig.json' },
-        { from: path.resolve(__dirname, 'src/asset/resource/abilities'), to: path.resolve(__dirname, 'dist/asset/resource/abilities') },
+        {
+          from: path.resolve(__dirname, 'src/asset'), // Source folder
+          to: path.resolve(__dirname, 'dist/asset'), // Destination folder
+        },
+        {
+          from: path.resolve(__dirname, 'src/appconfig.json'), // Source folder
+          to: path.resolve(__dirname, 'dist/appconfig.json'), // Destination folder
+        },
+        {
+          from: path.resolve(__dirname, 'src/icon.png'), // Source folder
+          to: path.resolve(__dirname, 'dist/icon.png'), // Destination folder
+        }
       ],
+    }),
+    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+      resource.request = resource.request.replace(/^node:/, '');
+    }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^sharp$/,
     }),
   ],
 };

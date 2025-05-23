@@ -102,7 +102,8 @@ export function createNumberSetting(
 		defaultValue?: number;
 		min?: number;
 		max?: number;
-	} = {}
+	} = {},
+	fn: Function,
 ) {
 	let {
 		defaultValue = options.defaultValue ?? 10,
@@ -112,10 +113,17 @@ export function createNumberSetting(
 	let input = createInput('number', name, defaultValue);
 	input.setAttribute('min', min.toString());
 	input.setAttribute('max', max.toString());
+	input.classList.add('nisinput');
+	input.addEventListener('change', () => {
+			if (input.value !== '') {
+				updateSetting(name, parseInt(input.value, 10));
+				fn();
+			}
+		});
 	let label = createLabel(name, description);
-	let container = createFlexContainer('reverse-setting');
-	container.appendChild(input);
+	let container = createFlexContainer();
 	container.appendChild(label);
+	container.appendChild(input);
 	return container;
 }
 

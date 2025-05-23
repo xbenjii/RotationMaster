@@ -1,54 +1,86 @@
 const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
+const webpack = require('webpack');
 
-/**
- * @type {import("webpack").Configuration}
- */
 module.exports = {
-  entry: {
-    //each entrypoint results in an output file
-    //so this results in an output file called 'main.js' which is built from src/index.ts
-    main: './src/index.ts'
-  },
+  entry: './src/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name][contenthash].js',
     clean: true,
-    library: { type: "umd", name: "RotationMaster" }
   },
-	devtool: false,
-	mode: process.env.NODE_ENV || 'development',
-	// prevent webpack from bundling these imports (alt1 libs can use them when running in nodejs)
-	externals: ['sharp', 'canvas', 'electron/common'],
-	resolve: {
-		extensions: ['.wasm', '.tsx', '.ts', '.mjs', '.jsx', '.js'],
-	},
-	module: {
-		// The rules section tells webpack what to do with different file types when you import them from js/ts
-		rules: [
-			{ test: /\.tsx?$/, loader: 'ts-loader' },
-			{ test: /\.css$/, use: ['style-loader', 'css-loader'] },
-			{
-				test: /\.scss$/,
-				use: ['style-loader', 'css-loader', 'sass-loader'],
-			},
-			// type:"asset" means that webpack copies the file and gives you an url to them when you import them from js
-			{
-				test: /\.(png|jpg|jpeg|gif|webp)$/,
-				type: 'asset/resource',
-				generator: { filename: '[base]' },
-			},
-			{
-				test: /\.(html|json)$/,
-				type: 'asset/resource',
-				generator: { filename: '[base]' },
-			},
-			// file types useful for writing alt1 apps, make sure these two loader come after any other json or png loaders, otherwise they will be ignored
-			{
-				test: /\.data\.png$/,
-				loader: 'alt1/imagedata-loader',
-				type: 'javascript/auto',
-			},
-			{ test: /\.fontmeta.json/, loader: 'alt1/font-loader' },
-		],
-	},
+  mode: 'development',
+  devServer: {
+    static: {
+      directory: path.resolve(__dirname, 'dist'),
+    },
+    port: 3000,
+    open: false,
+    hot: true,
+    compress: true,
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+    fallback: {
+      util: require.resolve('util/'),
+    },
+    fallback: {
+      "electron/common": false, // Mock the module
+    },
+  },
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /\.scss$/, // Add this rule for SCSS files
+        use: ['style-loader', 'css-loader', 'sass-loader'],
+      },
+      {
+        test: /\.(png|jpg|jpeg|gif|webp)$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'asset/resource/[name][ext]',
+        },
+      },
+    ],
+  },
+  plugins: [
+    new NodePolyfillPlugin(),
+    new HtmlWebpackPlugin({
+      template: './src/index.html',
+      filename: 'index.html',
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, 'src/asset'), // Source folder
+          to: path.resolve(__dirname, 'dist/asset'), // Destination folder
+        },
+        {
+          from: path.resolve(__dirname, 'src/appconfig.json'), // Source folder
+          to: path.resolve(__dirname, 'dist/appconfig.json'), // Destination folder
+        },
+        {
+          from: path.resolve(__dirname, 'src/icon.png'), // Source folder
+          to: path.resolve(__dirname, 'dist/icon.png'), // Destination folder
+        }
+      ],
+    }),
+    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+      resource.request = resource.request.replace(/^node:/, '');
+    }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^sharp$/,
+    }),
+  ],
 };

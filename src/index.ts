@@ -1,475 +1,741 @@
-// alt1 base libs, provides all the commonly used methods for image matching and capture
-// also gives your editor info about the window.alt1 api
-import * as a1lib from 'alt1';
+﻿import './css/main.scss';
+import abilities from './asset/abilities.json';
+import * as A1 from '@alt1/base';
 import * as sauce from './a1sauce';
-import abilitiesData from './asset/abilities.json';
 import * as htmlToImage from 'html-to-image';
 
-import './index.html';
-import './appconfig.json';
-import './icon.png';
-
 var currentOverlayPosition = sauce.getSetting('overlayPosition');
+let updatingOverlayPosition = false;
 
-function getByID(id: string) {
-  return document.getElementById(id);
+
+// Utility function to get elements by ID
+const getByID = (id: string): HTMLElement | null => document.getElementById(id);
+
+// Define variables
+let rotationName = '';
+
+type Dropdown = {
+  selectedAbility: Ability | null; // The currently selected ability, or null if none is selected
+};
+type Rotation = {
+  name: string;
+  data: Ability[];
 }
-
-const rotationDiv = getByID('rotation');
-const dropdownsContainer = getByID('dropdowns-container');
-const overlay = getByID('overlay');
-
-let dropdowns: { id: number; selectedAbility: any }[] = [];
-let abilities: any[] = [];
-let elements: { id: number }[] = [];
-let rotationName = "Untitled Rotation";
-
-//fetch abilities data
-const fetchAbilities = async () => {
-  try {
-    const response = await fetch('./abilities.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    abilities = await response.json();
-    console.log("Fetched abilities:", abilities);
-  } catch (error) {
-    console.error("Error fetching abilities.json:", error);
-  }
+type Ability = {
+  Title: string;
+  Emoji: string;       // The emoji representing the ability
+  EmojiId: string;     // A unique identifier for the ability
+  Category: string;    // The category of the ability
+  Src: string;         // The source URL for the ability's image
 };
+const dropdowns: Dropdown[] = []; // Initialize as an empty array
 
-// Add a new dropdown
-const addDropdown = () => {
-  const id = elements.length;
-  elements.push({ id });
-  dropdowns.push({ id, selectedAbility: null });
-  renderDropdowns();
-};
+// Retrieve saved rotations from localStorage
+const cachedRotations = localStorage.getItem("savedRotations");
+const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
 
-// Render dropdowns
+// Function to render dropdowns (placeholder for your existing logic)
 const renderDropdowns = () => {
-  if (!dropdownsContainer) return; // Check if dropdownsContainer exists)
+  const dropdownContainer = getByID('dropdowns-container');
+  if (!dropdownContainer) return;
 
-  dropdownsContainer.innerHTML = ""; // Clear existing dropdowns
+  dropdownContainer.innerHTML = ''; // Clear existing dropdowns
 
   dropdowns.forEach((dropdown, index) => {
-    const container = document.createElement("div");
-    container.className = "dropdown-container";
+    const dropdownDiv = document.createElement('div');
+    dropdownDiv.className = 'ability-dropdown';
 
-    // Create dropdown
-    const select = document.createElement("select");
-    select.className = "nisdropdown";
-    select.innerHTML = `<option value="">Select an ability</option>`;
-    abilities.forEach((ability) => {
-      const option = document.createElement("option");
-      option.value = ability.Emoji;
-      option.textContent = ability.Emoji;
-      if (dropdown.selectedAbility && dropdown.selectedAbility.Emoji === ability.Emoji) {
-        option.selected = true;
+    //Create the filter input
+    const filterInput = document.createElement('input');
+    filterInput.type = 'text';
+    filterInput.placeholder = 'Search...';
+    filterInput.className = 'nisinput';
+    filterInput.addEventListener('input', (e) => {
+      const filter = (e.target as HTMLInputElement).value.toLowerCase();
+      const filteredAbilities = abilities.filter(
+        (a: any) =>
+          a.Category.toLowerCase().includes(filter) ||
+          a.Emoji.toLowerCase().includes(filter)
+      );
+      updateDropdownOptions(selectElement, filteredAbilities);
+    });
+
+    // Create the dropdown select
+    const selectElement = document.createElement('select');
+    selectElement.className = 'nisdropdown';
+    selectElement.innerHTML = `<option value="">Select an ability</option>`;
+    abilities.forEach((a: Ability) => {
+      const option = document.createElement('option');
+      option.value = a.Emoji;
+      option.textContent = a.Emoji;
+      selectElement.appendChild(option);
+    });
+
+    // Set the selected value if available
+    if (dropdown.selectedAbility) {
+      selectElement.value = dropdown.selectedAbility.Emoji;
+    }
+
+    selectElement.addEventListener('change', (e) => {
+      const selectedAbility = (e.target as HTMLSelectElement).value;
+      const ability = abilities.find((a: Ability) => a.Emoji === selectedAbility);
+      if (ability != null) {
+        //assign the ability to the dropdowns
+        dropdowns[index].selectedAbility = ability;
+        //update the image
+        abilityImage.src = ability.Src;
+        abilityImage.alt = ability.Emoji;
+
+        // Update the overlay
+        renderRotationPreview();
       }
-      select.appendChild(option);
+
     });
 
-    select.addEventListener("change", (e) => {
-      const selectedEmoji = (e.target as HTMLSelectElement).value;
-      const ability = abilities.find((a) => a.Emoji === selectedEmoji);
-      dropdowns[index].selectedAbility = ability || null;
-      updateOverlay();
+    // Create the image for the selected ability
+    const abilityImage = document.createElement('img');
+    abilityImage.className = 'ability-image';
+    if (dropdown.selectedAbility) {
+      abilityImage.src = dropdown.selectedAbility.Src;
+      abilityImage.alt = dropdown.selectedAbility.Emoji;
+    }
+    // Create the button group
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'button-group';
+
+    // Move Up Button
+    const moveUpButton = document.createElement('button');
+    moveUpButton.className = 'nisbutton up-button';
+    moveUpButton.innerHTML = `<i class="fa-solid fa-chevron-up"></i>`;
+    moveUpButton.disabled = index === 0;
+    moveUpButton.addEventListener('click', () => {
+      if (index > 0) {
+        [dropdowns[index - 1], dropdowns[index]] = [dropdowns[index], dropdowns[index - 1]];
+        renderDropdowns();
+        renderRotationPreview();
+      }
     });
 
-    container.appendChild(select);
+    // Move Down Button
+    const moveDownButton = document.createElement('button');
+    moveDownButton.className = 'nisbutton down-button';
+    moveDownButton.innerHTML = `<i class="fa-solid fa-chevron-down"></i>`;
+    moveDownButton.disabled = index === dropdowns.length - 1;
+    moveDownButton.addEventListener('click', () => {
+      if (index < dropdowns.length - 1) {
+        [dropdowns[index], dropdowns[index + 1]] = [dropdowns[index + 1], dropdowns[index]];
+        renderDropdowns();
+        renderRotationPreview();
+      }
+    });
 
-    // Add buttons
-    const upButton = document.createElement("button");
-    upButton.textContent = "Up";
-    upButton.disabled = index === 0;
-    upButton.addEventListener("click", () => moveUp(index));
-    container.appendChild(upButton);
+    // Delete Button
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'nisbutton delete-button';
+    deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`;
+    deleteButton.addEventListener('click', () => {
+      dropdowns.splice(index, 1);
+      renderDropdowns();
+      renderRotationPreview();
+    });
 
-    const downButton = document.createElement("button");
-    downButton.textContent = "Down";
-    downButton.disabled = index === dropdowns.length - 1;
-    downButton.addEventListener("click", () => moveDown(index));
-    container.appendChild(downButton);
 
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.addEventListener("click", () => removeDropdown(index));
-    container.appendChild(deleteButton);
+    // Append buttons to the button group
+    buttonGroup.appendChild(moveUpButton);
+    buttonGroup.appendChild(moveDownButton);
+    buttonGroup.appendChild(deleteButton);
 
-    dropdownsContainer.appendChild(container);
+    // Append all elements to the dropdown container
+    dropdownDiv.appendChild(filterInput);
+    dropdownDiv.appendChild(selectElement);
+    dropdownDiv.appendChild(abilityImage);
+    dropdownDiv.appendChild(buttonGroup);
+
+    // Append the dropdown container to the main container
+    dropdownContainer.appendChild(dropdownDiv);
   });
 };
 
-// Move dropdown up
-const moveUp = (index: number) => {
-  if (index > 0) {
-    [dropdowns[index - 1], dropdowns[index]] = [dropdowns[index], dropdowns[index - 1]];
-    renderDropdowns();
+const updateDropdownOptions = (selectElement: HTMLSelectElement, abilities: Ability[]) => {
+  selectElement.innerHTML = `<option value="">Select an ability</option>`;
+  abilities.forEach((ability) => {
+    const option = document.createElement('option');
+    option.value = ability.Emoji;
+    option.textContent = ability.Emoji;
+    selectElement.appendChild(option);
+  });
+};
+
+// Handle rotation name input
+const rotationNameInput = getByID('rotation-name') as HTMLInputElement;
+if (rotationNameInput) {
+  rotationNameInput.addEventListener('input', (e) => {
+    rotationName = (e.target as HTMLInputElement).value;
+  });
+}
+
+// Populate the dropdown with saved rotations
+const populateSavedRotations = () => {
+  const selectElement = document.getElementById("savedRotations") as HTMLSelectElement;
+  selectElement.innerHTML = ""; // Clear existing options
+
+  const cachedRotations = localStorage.getItem("savedRotations");
+  const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
+
+  // Add a default option
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.disabled = true;
+  defaultOption.selected = true;
+  defaultOption.textContent = "Select Saved Rotation";
+  selectElement.appendChild(defaultOption);
+
+  // Add saved rotations from localStorage
+  savedRotations.forEach((rotation: Rotation) => {
+    const option = document.createElement("option");
+    option.value = rotation.name;
+    option.textContent = rotation.name;
+    selectElement.appendChild(option);
+  });
+};
+
+
+// Save rotation
+const saveRotation = (rotationName: string, rotationData: any) => {
+  // Retrieve existing rotations from localStorage
+  const cachedRotations = localStorage.getItem("savedRotations");
+  const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
+
+  // Check if the rotation name already exists
+  const existingIndex = savedRotations.findIndex(
+    (rotation: { name: string }) => rotation.name === rotationName
+  );
+
+  if (existingIndex !== -1) {
+    // Overwrite the existing rotation
+    savedRotations[existingIndex] = { name: rotationName, data: rotationData };
+  } else {
+    // Add a new rotation
+    savedRotations.push({ name: rotationName, data: rotationData });
+  }
+
+  // Save the updated rotations back to localStorage
+  localStorage.setItem("savedRotations", JSON.stringify(savedRotations));
+
+  // Refresh the dropdown
+  populateSavedRotations();
+
+  // set the selected rotation to the one you just saved
+  const rotationDropdown = getByID('savedRotations') as HTMLSelectElement;
+  if (rotationDropdown) {
+    const option = Array.from(rotationDropdown.options).find((opt) => opt.value === rotationName);
+    if (option) {
+      rotationDropdown.value = rotationName;
+    }
   }
 };
 
-// Move dropdown down
-const moveDown = (index: number) => {
-  if (index < dropdowns.length - 1) {
-    [dropdowns[index + 1], dropdowns[index]] = [dropdowns[index], dropdowns[index + 1]];
-    renderDropdowns();
+const handleSaveRotation = () => {
+  if (!rotationName.trim()) {
+    alert("Please enter a valid rotation name.");
+    return;
   }
+
+  const rotationData = dropdowns.map((dropdown) => dropdown.selectedAbility); // Add any other data you want to save
+  saveRotation(rotationName, rotationData);
+  alert("Rotation saved successfully!");
+};
+// Expose function to the global scope so it can be called from HTML
+(window as any).handleSaveRotation = handleSaveRotation;
+
+const handleExportRotation = () => {
+  console.log("Exporting Rotation");
+  const rotationData = dropdowns.map((dropdown) => dropdown.selectedAbility);
+  const dataStr = JSON.stringify(rotationData, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${rotationName.trim() ?? 'Untitled Rotation'}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+(window as any).handleExportRotation = handleExportRotation;
+
+const handleImportRotation = () => {
+  console.log("Importing Rotation")
+
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".json";
+
+  // Add an event listener to handle file selection
+  fileInput.addEventListener("change", (event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) {
+      alert("No file selected.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const contents = e.target?.result;
+      if (typeof contents === "string") {
+        try {
+          let parsedData = JSON.parse(contents);
+
+          // Check if the parsed data is in the old format
+          if (
+            Array.isArray(parsedData) &&
+            parsedData.length > 0 &&
+            parsedData[0].hasOwnProperty("selectedAbility")
+          ) {
+            // Old format
+            let rotationData = parsedData.map((item: any) => item.selectedAbility);
+
+            // Map old data to full ability details
+            rotationData = rotationData
+              .map((item: any) => {
+                const ability = abilities.find((a: Ability) => a.Emoji === item.Emoji);
+                return ability ? { ...ability } : null;
+              })
+              .filter((item: any) => item !== null);
+
+            // Map rotationData to dropdowns
+            rotationData = rotationData.map((ability: Ability) => ({ selectedAbility: ability }));
+
+            dropdowns.splice(0, dropdowns.length, ...rotationData);
+          } else {
+            // New format
+            // update ability info from abilities.json incase images have changed
+            parsedData = parsedData.map((item: any) => {
+              const ability = abilities.find((a: Ability) => a.Emoji === item.Emoji);
+              return ability ? { ...ability } : null;
+            }).filter((item: any) => item !== null);
+
+            // the parsed data must be an array of dropdowns
+            const parsedAbilities = parsedData.map((ability: Ability) => ({ selectedAbility: ability }));
+            
+            dropdowns.splice(0, dropdowns.length, ...parsedAbilities);
+          }
+
+          renderDropdowns();
+
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+          alert("Invalid JSON file.");
+        }
+      }
+      // Update the overlay
+      renderRotationPreview();
+    };
+
+    // Read the file as text
+    reader.readAsText(file);
+  });
+
+  // Trigger the file input dialog
+  fileInput.click();
+};
+(window as any).handleImportRotation = handleImportRotation;
+
+const handleSwitchRotation = (rotationName: string) => {
+  // Retrieve the saved rotations from localStorage
+  const cachedRotations = localStorage.getItem("savedRotations");
+  const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
+
+
+  const selectedRotation = savedRotations.find(
+    (rotation: Rotation) => rotation.name === rotationName
+  );
+
+  if (!selectedRotation) {
+    alert('Rotation not found.');
+    return;
+  }
+
+  // change the rotation name input to the selected rotation name
+  const rotationNameInput = getByID('rotation-name') as HTMLInputElement;
+  if (rotationNameInput) {
+    rotationNameInput.value = selectedRotation.name;
+  }
+
+  // Clear the current dropdowns
+  dropdowns.splice(0, dropdowns.length);
+
+  // Populate dropdowns with the saved rotation data
+  const rotationData = Array.isArray(selectedRotation.data) ? selectedRotation.data : [selectedRotation.data];
+
+  rotationData.forEach((ability : Ability) => {
+    dropdowns.push({ selectedAbility: ability });
+  });
+
+  // Re-render the dropdowns
+  renderDropdowns();
+
+  // Update the overlay
+  renderRotationPreview();
 };
 
-// Remove a dropdown
-const removeDropdown = (index: number) => {
-  dropdowns.splice(index, 1);
-  elements.splice(index, 1);
+
+const addDropdown = () => {
+  console.log('Add New button clicked');
+  dropdowns.push({ selectedAbility: null });
+  renderDropdowns();
+}
+(window as any).addDropdown = addDropdown;
+
+// Populate rotation dropdown
+const rotationDropdown = getByID('savedRotations') as HTMLSelectElement;
+
+
+if (rotationDropdown) {
+  rotationDropdown.addEventListener('change', (e) => {
+    const selectedRotation = (e.target as HTMLSelectElement).value;
+    handleSwitchRotation(selectedRotation);
+  });
+}
+
+// Delete rotation
+const deleteRotation = () => {
+  const selectedRotation = rotationDropdown?.value;
+  if (!selectedRotation) {
+    alert('Please select a rotation to delete.');
+    return;
+  }
+  const index = savedRotations.findIndex((r : any) => r.name === selectedRotation);
+  if (index !== -1) {
+    savedRotations.splice(index, 1);
+    // Save the updated rotations back to localStorage
+    localStorage.setItem("savedRotations", JSON.stringify(savedRotations));
+
+    populateSavedRotations();
+    alert('Rotation deleted successfully!');
+    clearDropdowns();
+  }
+};
+(window as any).deleteRotation = deleteRotation;
+
+const deleteButton = getByID('delete-button');
+if (deleteButton) {
+  deleteButton.addEventListener('click', deleteRotation);
+}
+
+// Clear all dropdowns
+const clearDropdowns = () => {
+  console.log("clearing dropdowns " + dropdowns.length);
+  dropdowns.splice(0, dropdowns.length); // Clear the array by removing all elements
   renderDropdowns();
 };
+(window as any).clearDropdowns = clearDropdowns;
 
-// Update overlay
-const updateOverlay = () => {
-  if (overlay) {
-    overlay.innerHTML = dropdowns
-      .filter((dropdown) => dropdown.selectedAbility)
+const clearButton = getByID('clear-button');
+if (clearButton) {
+  clearButton.addEventListener('click', clearDropdowns);
+}
+
+// Function to update the overlay div
+const renderRotationPreview = () => {
+  const overlay = getByID('rotation-preview');
+  const toggle = getByID('toggle-details');
+  if (!overlay || !toggle) return;
+
+  // Get the number of images per row from settings
+  const numImagesPerRow = sauce.getSetting('ablitiesPerRow');
+
+  // Filter dropdowns with selected abilities and map them to image elements
+  const selectedAbilities = dropdowns.filter((dropdown) => dropdown.selectedAbility);
+  const rowspacer = '<span class="row-spacer" > > </span>'
+
+  // Group the images into rows
+  const rows: string[] = [];
+  for (let i = 0; i < selectedAbilities.length; i += numImagesPerRow) {
+    const rowImages = selectedAbilities
+      .slice(i, i + numImagesPerRow)
       .map(
         (dropdown) =>
-          `<img src="${dropdown.selectedAbility.Src}" alt="${dropdown.selectedAbility.Emoji}" class="overlay-image" />`
+          `<img src="${dropdown.selectedAbility!.Src}" alt="${dropdown.selectedAbility!.Emoji}" class="rotation-preview-image" />`
       )
-      .join(" > ");
+      .join(rowspacer);
+    // Add ' > ' before rows that are not the first row
+    const rowPrefix = i === 0 ? '' : rowspacer;
+    rows.push(`<div class="rotation-row">${rowPrefix}${rowImages}</div>`);
   }
+
+  // If no images are selected, clear the overlay and hide it
+  if (rows.length === 0) {
+    overlay.innerHTML = '';
+    overlay.style.visibility = 'hidden';
+    toggle.style.visibility = 'hidden';
+    return;
+  }
+
+  // Update the overlay's innerHTML with the rows
+  overlay.innerHTML = rows.join('');
+  overlay.style.visibility = 'visible';
+  toggle.style.visibility = 'visible';
 };
+
+let detailsAreHidden = false;
+const handleToggleDetails = () => {
+  const toggleDetailsButton = getByID('toggle-details') as HTMLElement;
+  const detailsContainer = getByID('rotation-details') as HTMLElement;
+
+  if (!toggleDetailsButton || !detailsContainer) {
+    console.error('one or more elements failed to load')
+    return;
+  };
+
+  if (detailsAreHidden) {
+    detailsContainer.style.display = 'block';
+    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+  } 
+  else {
+    detailsContainer.style.display = 'none';
+    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+  }
+
+  detailsAreHidden = !detailsAreHidden;
+}
+(window as any).handleToggleDetails = handleToggleDetails;
 
 let config = {
   appName: 'rotationMaster',
 };
 
-//let helperItems = {
-//  Output: getByID('output'),
-//  settings: getByID('Settings'),
-//  RotationMaster: getByID('RotationMaster'),
-//  Abilities: <HTMLUListElement>getByID('Abilities'),
-//  ToggleOverlayButton: getByID('ToggleOverlayButton'),
-//  NameOutput: getByID('NameOutput'),
-//};
+function initSettings() {
+  if (!localStorage[config.appName]) {
+    localStorage.setItem(
+      config.appName,
+      JSON.stringify({
+        activeOverlay: true,
+        loopSpeed: 150,
+        overlayPosition: { x: 100, y: 100 },
+        uiScale: 100,
+        updatingOverlayPosition: false,
+      })
+    )
+  }
+}
 
-export async function startRotationMaster() {
+async function setOverlayPosition() {
+  A1.once('alt1pressed', updateLocation);
+  let oldPosition = sauce.getSetting('overlayPosition');
+  updatingOverlayPosition = true;
+  helperItems.RotationMaster?.classList.toggle(
+    'positioning',
+    updatingOverlayPosition
+  );
+  while (updatingOverlayPosition) {
+    alt1.setTooltip('Press Alt+1 to save position');
+    let abilitiesElement = getByID('Abilities');
+    sauce.updateSetting('overlayPosition', {
+      x: Math.floor(
+        A1.getMousePosition()?.x ?? 100 -
+        (sauce.getSetting('uiScale') / 100) * (abilitiesElement?.offsetWidth ?? 2 / 2)
+      ),
+      y: Math.floor(
+        A1.getMousePosition()?.y ?? 100 -
+          (sauce.getSetting('uiScale') / 100) * (abilitiesElement?.offsetHeight ?? 2 / 2)
+      ),
+    });
+    currentOverlayPosition = sauce.getSetting('overlayPosition');
+    alt1.overLayRefreshGroup('group1');
+    await sauce.timeout(200);
+  }
+  alt1.clearTooltip();
+}
+
+function updateLocation(e : any) {
+  let abilitiesElement = getByID('Abilities');
+  sauce.updateSetting('overlayPosition', {
+    x: Math.floor(
+      e.x - (sauce.getSetting('uiScale') / 100) * (abilitiesElement?.offsetWidth ?? 2 / 2)
+    ),
+    y: Math.floor(
+      e.y - (sauce.getSetting('uiScale') / 100) * (abilitiesElement?.offsetHeight ?? 2 / 2)
+    ),
+  });
+  updatingOverlayPosition = false;
+  helperItems.RotationMaster?.classList.toggle(
+    'positioning',
+    updatingOverlayPosition
+  );
+}
+
+const currentVersion = '2.0.0';
+const settingsObject = {
+  settingsHeader: sauce.createHeading(
+    'h2',
+    'RotationMaster - v' + currentVersion
+  ),
+  beginGeneral: sauce.createHeading('h2', 'Settings'),
+  OverlayPositionButton: sauce.createButton(
+    'Set Overlay Position',
+    setOverlayPosition,
+    { classes: ['nisbutton'] }
+  ),
+  ScaleHeader: sauce.createHeading('h3', 'Scale'),
+  UIScale: sauce.createRangeSetting(
+    'uiScale',
+    'Adjusts the size of the Overlay',
+    {
+      defaultValue: '100',
+      min: 50,
+      max: 200,
+    }
+  ),
+  AbilitiesPerRowHeader: sauce.createHeading('h3', 'Abilities Per Row'),
+  AbilitiesPerRow: sauce.createNumberSetting(
+    'ablitiesPerRow',
+    'The number of abilities to show per row in the overlay',
+    { defaultValue: 10, min: 1, max: 20 },
+    renderRotationPreview
+  ),
+  OverlayRefreshHeader: sauce.createHeading('h3', 'Refresh Rate'),
+  OverlayRefreshRate: sauce.createRangeSetting(
+    'overlayRefreshRate',
+    'The rate that the overlay should refresh - in milliseconds. Requires reloading to take effect.',
+    { defaultValue: '50', min: 20, max: 500, unit: 'ms' }
+  ),
+}
+
+let helperItems = {
+  Output: getByID('output'),
+  RotationMaster: getByID('RotationMaster'),
+  Abilities: getByID('Abilities'),
+}
+
+function startRotationMaster() {
+  populateSavedRotations();
+  renderDropdowns();
+  renderRotationPreview();
+
   if (!window.alt1) {
-    //helperItems.Output?.insertAdjacentHTML(
-    //  'beforeend',
-    //  `<div>You need to run this page in alt1 to capture the screen</div>`
-    //);
+    helperItems.Output?.insertAdjacentHTML(
+      'beforeend',
+      `<div>You need to run this page in alt1 to capture the screen</div>`
+    );
     return;
   }
   if (!alt1.permissionPixel) {
-    //helperItems.Output?.insertAdjacentHTML(
-    //  'beforeend',
-    //  `<div><p>Page is not installed as app or capture permission is not enabled</p></div>`
-    //);
+    helperItems.Output?.insertAdjacentHTML(
+      'beforeend',
+      `<div><p>Page is not installed as app or capture permission is not enabled</p></div>`
+    );
     return;
   }
   if (!alt1.permissionOverlay) {
-    //helperItems.Output?.insertAdjacentHTML(
-    //  'beforeend',
-    //  `<div><p>Attempted to use Overlay but app overlay permission is not enabled. Please enable "Show Overlay" permission in Alt1 settinsg (wrench icon in corner).</p></div>`
-    //);
+    helperItems.Output?.insertAdjacentHTML(
+      'beforeend',
+      `<div><p>Attempted to use Overlay but app overlay permission is not enabled. Please enable "Show Overlay" permission in Alt1 settinsg (wrench icon in corner).</p></div>`
+    );
     return;
   }
 
-  await fetchAbilities();
-
-  renderDropdowns();
-
-  //if (sauce.getSetting('activeOverlay')) {
-  //  var abilitiesElement = getByID('Abilities')
-  //  if (abilitiesElement != null)
-  //    startOverlay(abilitiesElement);
-  //} else {
-  //  helperItems.RotationMaster?.classList.add('overlay-disabled');
-  //}
+  const trackedRegion = getByID('rotation-preview');
+  if (trackedRegion)
+    startOverlay(trackedRegion);
 }
 
-//async function startOverlay(element: HTMLElement) {
-//  let overlay = element;
-//  let styles = getComputedStyle(overlay);
-//  let totalTrackeDItems = sauce.getSetting('totalTrackedItems');
-//  let buffsPerRow = sauce.getSetting('buffsPerrow');
-//  let refreshRate = parseInt(sauce.getSetting('overlayRefreshRate'), 10);
-//  let overlayPosition;
-//  await sauce.timeout(1000);
-//  while (true) {
-//    let uiScale = sauce.getSetting('uiScale');
-//    overlayPosition = currentOverlayPosition;
-//    try {
-//      let dataUrl = await htmlToImage.toCanvas(overlay, {
-//        backgroundColor: 'transparent',
-//        width: parseInt(styles.minWidth, 10),
-//        height:
-//          parseInt(styles.minHeight, 10) +
-//          Math.floor(totalTrackeDItems / buffsPerRow + 1) *
-//          27 *
-//          (uiScale / 100),
-//        quality: 1,
-//        pixelRatio: uiScale / 100 - 0.00999999999999999999,
-//        skipAutoScale: true,
-//      });
+async function startOverlay(element: HTMLElement) {
+  let overlay = element;
+  let styles = getComputedStyle(overlay);
+  let refreshRate = parseInt(sauce.getSetting('overlayRefreshRate'), 10);
+  let abilitiesPerRow = sauce.getSetting('ablitiesPerRow');
+  let overlayPosition;
+  //total tracked items is equal to the number of dropdowns with a value
+  let totalTrackedItems = dropdowns.filter((dropdown) => dropdown.selectedAbility).length;
+  while (true) {
+    let uiScale = sauce.getSetting('uiScale');
+    overlayPosition = currentOverlayPosition;
+    try {
+      let dataUrl = await htmlToImage.toCanvas(overlay, {
+        backgroundColor: 'transparent',
+        width: parseInt(styles.minWidth, 10),
+        height:
+          parseInt(styles.minHeight, 10) +
+          Math.floor((totalTrackedItems / abilitiesPerRow)+1) *
+          27 *
+          (uiScale / 100),
+        quality: 1,
+        pixelRatio: uiScale / 100 - 0.00999999999999999999,
+        skipAutoScale: true,
+      });
 
-//      if (element == getByID('Abilities')) {
-//        let base64 = dataUrl
-//          .getContext('2d')
-//          ?.getImageData(0, 0, dataUrl.width, dataUrl.height);
+      let base64ImageString = dataUrl
+        .getContext('2d')
+        ?.getImageData(0, 0, dataUrl.width, dataUrl.height)
 
-//        alt1.overLaySetGroup('region');
-//        alt1.overLayFreezeGroup('region');
-//        alt1.overLayClearGroup('region');
-//        if (base64)
-//          alt1.overLayImage(
-//            overlayPosition.x,
-//            overlayPosition.y,
-//            a1lib.encodeImageString(base64),
-//            base64.width,
-//            refreshRate
-//          );
-
-//        alt1.overLayRefreshGroup('region');
-//      }
-//      else {
-//        alt1.overLayClearGroup('region');
-//        alt1.overLayRefreshGroup('region');
-//      }
-//    }
-//    catch (e) {
-//      console.error(`html-to-image failed to capture`, e);
-//    }
-//  }
-//}
-
-//async function setInactive(element: HTMLElement) {
-//  if (!(element.dataset.startedTimer == 'true')) {
-//    element.classList.add('inactive');
-//    element.classList.remove('active');
-//    element.dataset.time = '';
-//  } else if (element.dataset.startedFimer == 'false') {
-//    element.classList.remove('cooldown');
-//    element.dataset.cooldown = '';
-//  }
-//}
-
-//// loads all images as raw pixel data async, images have to be saved as *.data.png
-//// this also takes care of metadata headers in the image that make browser load the image
-//// with slightly wrong colors
-//// this function is async, so you cant acccess the images instantly but generally takes <20ms
-//// use `await imgs.promise` if you want to use the images as soon as they are loaded
-//const abilityImages = a1lib.webpackImages(
-//  abilitiesData.reduce((acc: { [x: string]: any; }, ability: { Title: any; Src: string; }) => {
-//    const key = ability.Title;
-//    const value = require(ability.Src.replace('./asset/resource', './asset/data').replace('.webp', '-noborder.data.png'));
-//    acc[key] = value;
-//    return acc;
-//  }, {} as Record<string, any>)
-//);
-
-//let updatingOverlayPosition = false;
-
-//function updateLocation(e: any) {
-//  let ab = getByID('Abilities');
-//  if (!ab) return;
-//  sauce.updateSetting('overlayPosition', {
-//    x: Math.floor(
-//      e.x - (sauce.getSetting('uiScale') / 100) * (ab.offsetWidth / 2)
-//    ),
-//    y: Math.floor(
-//      e.y - (sauce.getSetting('uiScale') / 100) * (ab.offsetHeight / 2)
-//    ),
-//  });
-//  updatingOverlayPosition = false;
-//  helperItems.RotationMaster?.classList.toggle(
-//    'positioning',
-//    updatingOverlayPosition
-//  )
-//}
-
-//function initSettings() {
-//  if (!localStorage[config.appName]) {
-//    setDefaultSettings();
-//  }
-//  loadSettings();
-//}
-
-//function deleteLocalStorage() {
-//  localStorage.removeItem(config.appName);
-//  localStorage.removeItem('Abilities');
-//  location.reload();
-//}
-
-
-//function setDefaultSettings() {
-//  localStorage.setItem(
-//    config.appName,
-//    JSON.stringify({
-//      activeOverlay: true,
-//      overlayPosition: { x: 100, y: 100 },
-//      uiScale: 100,
-//      updatingOverlayPosition: false,
-//      abilitiesPerRow: 10,
-//    })
-//  )
-//}
-
-//function loadSettings() {
-//  getByID('Abilities')?.style.setProperty(
-//    '--maxcount',
-//    sauce.getSetting('buffsPerRow')
-//  );
-//  getByID('Abilities')?.style.setProperty(
-//    '--totalitems',
-//    helperItems.Abilities.children.length.toString()
-//  );
-//  getByID('Abilities')?.style.setProperty(
-//    '--scale',
-//    sauce.getSetting('uiScale')
-//  );
-
-//  const inputElement = settingsObject.UIScale.querySelector('input')
-//  if (inputElement && parseInt(inputElement.value, 10) < 100) {
-//    helperItems.Abilities.classList.add('scaled');
-//  }
-//}
-
-
-const currentVersion = '2.0.0';
-//const settingsObject = {
-//  settingsHeader: sauce.createHeading(
-//    'h2',
-//    'Rotation Master - v' + currentVersion
-//  ),
-//  AbilitiesPerRow: sauce.createNumberSetting(
-//    'abilitiesPerRow',
-//    'Number of abilities displayed per row',
-//    { defaultValue: 10, min: 1, max: 20 }
-//  ),
-//  Brightness: sauce.createRangeSetting(
-//    'brightness',
-//    '<u>Light Level</u> Control how dark inactive buffs should be - lower number being darker',
-//    { defaultValue: '75', min: 5, max: 100, unit: '%' }
-//  ),
-//  endGeneral: sauce.createSeperator(),
-//  OverlayHeader: sauce.createHeading('h2', 'Overlay'),
-//  OverlayActive: sauce.createCheckboxSetting(
-//    'activeOverlay',
-//    "<u>Enable Overlay</u> When the overlay is toggled off - the app will hide the entire UI unless your mouse is over the app. This is for users who don't mind having a background and want to avoid the delay the overlay has",
-//    sauce.getSetting('activeOverlay') ?? false
-//  ),
-//  OverlaySmallText: sauce.createSmallText(
-//    `If the overlay does not show - check the "Show overlay" permission is enabled for this plugin in Alt1's settings or try setting the position using the button below.`
-//  ),
-//  OverlayPositionButton: sauce.createButton(
-//    'Set Overlay Position',
-//    setOverlayPosition,
-//    { classes: ['nisbutton'] }
-//  ),
-//  ScaleHeader: sauce.createHeading('h3', 'Scale'),
-//  UIScale: sauce.createRangeSetting(
-//    'uiScale',
-//    'Adjusts the size of the Overlay',
-//    {
-//      defaultValue: '100',
-//      min: 50,
-//      max: 200,
-//    }
-//  ),
-//  OverlayRefreshHeader: sauce.createHeading('h3', 'Refresh Rate'),
-//  OverlayRefreshRate: sauce.createRangeSetting(
-//    'overlayRefreshRate',
-//    'The rate that the overlay should refresh - in milliseconds. Requires reloading to take effect.',
-//    { defaultValue: '50', min: 20, max: 500, unit: 'ms' }
-//  ),
-//  endOverlay: sauce.createSeperator(),
-//  ResetHeader: sauce.createHeading('h3', 'Reset Config'),
-//  ResetText: sauce.createText(
-//    `This will reset your configuration and reload the plugin in an attempt to solve any problems caused by missing or bad values`
-//  ),
-//  resetButton: sauce.createButton('Reset All Settings', deleteLocalStorage, {
-//    classes: ['nisbutton'],
-//  }),
-//};
-
-
-//async function setOverlayPosition() {
-//  a1lib.once('alt1pressed', updateLocation);
-//  let oldPosition = sauce.getSetting('overlayPosition');
-//  sauce.updateSetting('oldOverlayPosition', oldPosition);
-//  updatingOverlayPosition = true;
-//  helperItems.RotationMaster?.classList.toggle(
-//    'positioning',
-//    updatingOverlayPosition
-//  );
-
-//  while (updatingOverlayPosition) {
-//    alt1.setTooltip('Press Alt+1 to save position');
-//    let rm = getByID('RotationMaster');
-//    if (!rm) return;
-//    sauce.updateSetting('overlayPosition', {
-//      x: Math.floor(
-//        a1lib.getMousePosition()?.x ?? 100 -
-//        (sauce.getSetting('uiScale') / 100) * (rm.offsetWidth / 2)
-//      ),
-//      y: Math.floor(
-//        a1lib.getMousePosition()?.y ?? 100 -
-//        (sauce.getSetting('uiScale') / 100) * (rm.offsetHeight / 2)
-//      ),
-//    });
-//    currentOverlayPosition = sauce.getSetting('overlayPosition');
-//    alt1.overLayRefreshGroup('group1')
-//    await sauce.timeout(200);
-//  }
-//}
-
-window.onload = function () {
-  startRotationMaster();
-
-  //check if we are running inside alt1 by ckecking if alt1 gloabl exists
-  if (window.alt1) {
-    //tell alt1 about the app
-    //this makes alt1 show the add app button when running inside the embedded browser
-    //also updates app settings if they are changed
-    alt1.identifyAppUrl('./appconfig.json');
-
-    //initSettings();
-    //let settings = document.querySelector('#Settings .container');
-    //Object.values(settingsObject).forEach((val) => {
-    //  settings?.before(val);
-    //});
-
-    //  const brightnessInput = settingsObject.Brightness.querySelector('input');
-    //  if (brightnessInput)
-    //    document.documentElement.style.setProperty(
-    //      '--brightness',
-    //      parseInt(brightnessInput.value, 10  / 100).toString()
-    //    );
-    //  const mutationConfig = {
-    //    attributes: false,
-    //    childList: true,
-    //    subtree: false,
-    //  };
-    //  const callback = (mutationList: any, observer: any) => {
-    //    for (const mutation of mutationList) {
-    //      const brightnessInput = settingsObject.Brightness.querySelector('input');
-    //      if (mutation.type === 'childList' && brightnessInput) {
-    //        document.documentElement.style.setProperty(
-    //          '--brightness',
-    //          (parseInt( brightnessInput.value, 10 ) / 100 ).toString()
-    //        );
-    //      }
-    //    }
-    //  };
-    //  const observer = new MutationObserver(callback);
-    ////  observer.observe(helperItems.Abilities, mutationConfig);
-    //} else {
-    //  let addappurl = `alt1://addapp/${new URL('./appconfig.json', document.location.href).href
-    //    }`;
-    //  helperItems.Output?.insertAdjacentHTML(
-    //    'beforeend',
-    //    `
-    //	Alt1 not detected, click <a href='${addappurl}'>here</a> to add this app to Alt1
-    //`
-    //  );
+      if (base64ImageString) {
+        alt1.overLaySetGroup('region');
+        alt1.overLayFreezeGroup('region');
+        alt1.overLayClearGroup('region');
+        alt1.overLayImage(
+          overlayPosition.x,
+          overlayPosition.y,
+          A1.encodeImageString(base64ImageString),
+          base64ImageString.width,
+          refreshRate
+        );
+        alt1.overLayRefreshGroup('region');
+      }
+      else {
+        alt1.overLayClearGroup('region');
+        alt1.overLayRefreshGroup('region');
+      }
+      
+    } catch (e) {
+      console.error(`html-to-image failed to capture`, e);
+    }
+    await sauce.timeout(refreshRate);
   }
 }
+
+// Initialize the app
+const App = () => {
+  if (window.alt1) {
+    //tell alt1 about the app
+    alt1.identifyAppUrl('./appconfig.json');
+
+    initSettings();
+    let settings = document.querySelector('#Settings .container');
+    Object.values(settingsObject).forEach((val) => {
+      settings?.before(val);
+    });
+    var abilitiesPerRowInput = getByID('abilitiesPerRow');
+    //  add nisinput to ablilitiesPerRowInput
+    if (abilitiesPerRowInput) {
+      abilitiesPerRowInput.classList.add('nisinput');
+    }
+
+    startRotationMaster();
+  }
+};
+
+// event listeners
+const savedRotationsDropdown = getByID('savedRotations') as HTMLSelectElement;
+if (savedRotationsDropdown) {
+  savedRotationsDropdown.addEventListener('change', (e) => {
+    const selectedRotation = (e.target as HTMLSelectElement).value;
+    handleSwitchRotation(selectedRotation);
+  });
+}
+
+// Add a listener for changes to #abilitiesPerRow
+const abilitiesPerRowInput = getByID('abilitiesPerRow') as HTMLInputElement;
+if (abilitiesPerRowInput) {
+  abilitiesPerRowInput.addEventListener('input', () => {
+    renderRotationPreview();
+  });
+}
+
+const addButton = getByID('add-button');
+if (addButton) {
+  addButton.addEventListener('click', addDropdown);
+}
+
+// Start the app
+App();
+

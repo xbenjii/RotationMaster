@@ -1,0 +1,365 @@
+:root {
+  --brightness: ,75;
+}
+
+html, body {
+  margin: 0; /* Remove default browser margins */
+  padding: 0; /* Remove default browser padding */
+  height: 100%; /* Ensure the body takes up the full viewport height */
+  box-sizing: border-box; /* Include padding and borders in dimensions */
+}
+
+#body {
+  display: block;
+  padding: 0 .5rem;
+  flex-direction: column;
+  margin: 0;
+}
+
+#RotationMaster {
+  width: 100%;
+  text-align: center;
+  height: auto; /* Ensure it grows with content */
+  text-align: center;
+  padding: 1rem;
+}
+
+#Settings {
+  display: block;
+  color: #F1F1F1;
+}
+
+#Settings {
+  display: flex; /* Use Flexbox for centering */
+  flex-direction: column; /* Optional: Stack children vertically */
+  justify-content: center; /* Center vertically */
+  align-items: center; /* Center horizontally */
+  padding: 1rem; /* Add some padding */
+}
+
+#Settings a {
+  color: #CEFC92;
+}
+
+#Settings a:visited,
+#Settings a:hover {
+  color: #57799e;
+}
+
+#Settings h2 {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+#Settings h2 + p {
+  text-align: center;
+}
+
+#Settings h3 {
+  letter-spacing: 1px;
+}
+
+#Settings h2,
+#Settings h3 {
+  color: #ffcb05;
+  text-shadow: 1px 1px #000000;
+}
+
+#Settings label {
+  font-family: sans-serif;
+  font-size: 14px;
+  color: #94afbd;
+  text-shadow: 1px 1px #000000;
+}
+
+#Settings .setting:nth-child(2n+0) {
+  background-color: #1c2c34;
+  padding: 4px;
+}
+
+#Settings .setting:nth-child(2n+0):hover {
+  background-color: #1c3b40;
+}
+
+#Settings .setting:nth-child(2n+1) {
+  background-color: #071820;
+  padding: 4px;
+}
+
+#Settings .setting:nth-child(2n+1):hover {
+  background-color: #03282d;
+}
+
+#Settings .reverse-setting {
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#Settings .flex u,
+#Settings .reverse-setting u {
+  display: block;
+  text-decoration: none;
+  color: #a4c2d1;
+  margin-bottom: 2px;
+}
+
+#Settings .nisinput{
+  margin: 4px 7px 2px 4px;
+  text-align: center;
+}
+
+#OverlayCanvasOutput {
+  display: none;
+}
+
+.tracked-region {
+  --maxcount: 5;
+  --scale: 100;
+  --totalitems: 10;
+  width: auto;
+  min-height: calc(((var(--totalitems) / var(--maxcount)) + 1) * (clamp(1, var(--scale) / 100, 2) * 27px) + (clamp(1, var(--scale) / 100, 2) * 27px));
+  display: grid;
+  justify-content: flex-start;
+  align-items: flex-start;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+  grid-template-columns: repeat(var(--maxcount),30px);
+  grid-template-rows: repeat(8, 30px);
+  position: relative;
+}
+
+.tracked-region::before {
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  border: solid 2px green;
+}
+
+.tracked-region li {
+  position: relative;
+  display: flex;
+  width: 27px;
+  height: 27px;
+  margin: 1px;
+  background-color: #282828;
+}
+
+#RotationMaster.hide-overlay .tracked-region {
+  opacity: 0;
+}
+.tracked-region li::after {
+  display: block;
+  content: attr(data-time);
+  z-index: 3;
+  font-family: 'trajan-pro-3', sans-serif;
+  position: absolute;
+  left: 2px;
+  bottom: 0;
+  font-size: 10px;
+  color: #FFFFFF;
+  font-weight: 300;
+}
+
+.tracked-region li::before {
+  display: block;
+  content: attr(data-time);
+  z-index: 3;
+  font-family: 'trajan-pro-3', sans-serif;
+  position: absolute;
+  left: 3px;
+  bottom: -1px;
+  font-size: 10px;
+  color: #000000;
+  font-weight: 300;
+}
+
+.tracked-region .spacoer {
+  background-color: transparent !important;
+}
+
+
+.nismainborder {
+  width: 100vw; // Full width of the viewport
+  height: 100vh; // Full height of the viewport
+  display: flex; // Flexbox for layout
+  flex-direction: column;
+  justify-content: flex-start; /* Align content to the top */
+  align-items: stretch; /* Stretch children to fill horizontal space */
+  box-sizing: border-box; /* Include padding and border in height calculations*/
+  overflow-y: auto;
+  overflow-x: hidden; // Hide horizontal scrollbar
+  // Optional: stack children vertically
+  justify-content: stretch; // Stretch children to fill vertical space
+  align-items: stretch; // Stretch children to fill horizontal space
+
+  .tracked-region li::after,
+  #UntrackedBuffs li::after {
+    display: block;
+    content: attr(data-time);
+    z-index: 3;
+    font-family: 'trajan-pro-3', sans-serif;
+    position: absolute;
+    left: 2px;
+    bottom: 0;
+    font-size: 10px;
+    color: #FFFFFF;
+    font-weight: 300;
+  }
+
+  .tracked-region li::before,
+  #UntrackedBuffs li::before {
+    display: block;
+    content: attr(data-time);
+    z-index: 3;
+    font-family: 'trajan-pro-3', sans-serif;
+    position: absolute;
+    left: 3px;
+    bottom: -1px;
+    font-size: 10px;
+    color: #000000;
+    font-weight: 300;
+  }
+
+  .tracked-region .spacoer {
+    background-color: transparent !important;
+  }
+  /* Custom scrollbar styling */
+  .nisborder::-webkit-scrollbar {
+    width: 10px; /* Width of the scrollbar */
+  }
+
+  .nisborder::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Background of the scrollbar track */
+  }
+
+  .nisborder::-webkit-scrollbar-thumb {
+    background: #888; /* Color of the scrollbar thumb */
+    border-radius: 5px; /* Rounded corners for the thumb */
+  }
+
+  .nisborder::-webkit-scrollbar-thumb:hover {
+    background: #555; /* Darker color when hovering over the thumb */
+  }
+
+  .ability-dropdown {
+    display: flex; /* Use flexbox for layout */
+    align-items: center; /* Vertically center items */
+    justify-content: center; /* Horizontally center items */
+    gap: 5px; /* Add spacing between items */
+  }
+
+  .nisinput {
+    flex: 1; /* Allow the input to grow and take up available space */
+    min-width: 75px; /* Set a minimum width for the input */
+  }
+
+  .nisdropdown {
+    flex: 1; /* Allow the dropdown to grow and take up available space */
+    min-width: 150px; /* Set a minimum width for the dropdown */
+  }
+
+  .button-group {
+    display: flex; /* Keep buttons in a horizontal row */
+    gap: 5px; /* Add spacing between buttons */
+  }
+
+  .nisbutton {
+    flex-shrink: 0; /* Prevent buttons from shrinking */
+  }
+
+  .ability-image {
+    width: 2rem; /* Set a fixed width for ability images */
+    height: 2rem; /* Set a fixed height for ability images */
+  }
+}
+
+.fullscreen {
+  width: 100%; // Ensure it stretches within the parent
+  height: 100%; // Ensure it stretches within the parent
+}
+
+.nisborder {
+  flex: 1; // Allow this child to grow and fill available space
+  display: flex; // Optional: for centering content inside
+  justify-content: center; // Optional: horizontal centering
+  align-items: flex-start; // Align content to the top
+  height: 100%; // Ensure it stretches to the full height of the parent
+  box-sizing: border-box;
+  padding-top: 1rem;
+
+  
+}
+
+.fox-image
+{
+  width: 5rem
+}
+
+a.subtle-link {
+  color: #888; 
+  text-decoration: none; /* Removes underline */
+  font-size: 10px; /* Adjust font size */
+}
+
+a.subtle-link:hover {
+  text-decoration: underline; /* Adds underline on hover */
+  color: #f1f1f1;
+}
+
+#dropdown-preview {
+  display: flex;
+  align-items: center; /* Vertically align items */
+  justify-content: center; /* Center items horizontally */
+  gap: 10px; /* Add a slight gap between items */
+  padding: 10px; /* Add padding inside the container */
+  margin: 0 auto; /* Center the container itself */
+  width: 0%;
+  box-sizing: border-box; /* Ensure padding is included in the width */
+}
+
+.rotation-preview {
+  margin-top: 15px;
+  bottom: 10px;
+  left: 10px;
+  background-color: rgba(0, 0, 0, 1);
+  padding: 10px;
+  border-radius: 5px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column; /* Stack rows vertically */
+  align-items: flex-start; /* Align rows to the left */
+  gap: 5px; // Add spacing between images
+}
+
+.rotation-row {
+  display: flex; /* Arrange images in a row */
+  align-items: center; /* Vertically align all items in the row */
+  gap: 5px; /* Add spacing between images */
+  margin-bottom: 3px; /* Add spacing between rows */
+}
+
+.rotation-preview-image {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.row-spacer {
+  font-weight: bold;
+  margin-right: 5px; /* Add spacing between the prefix and the first image */
+  color: #F1F1F1; /* Adjust color as needed */
+  display: flex; /* Ensure the prefix aligns with the images */
+  align-items: center; /* Vertically align the prefix with the first image */
+}
+
+#toggle-details {
+  margin-left: auto; /* Push the button to the right */
+}

@@ -12,7 +12,8 @@
     "module": "ESNext",
     "lib": [ "es2020", "dom" ],
     "strict": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "typeRoots": [ "./node_modules/@types", "./src/types" ]
   },
   "include": [ "src/**/*" ]
 }

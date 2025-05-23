@@ -1,5 +1,7 @@
 # Rotation Master
 
+#### current version: v2.0.0
+
 link: https://ellamental2.github.io/RotationMaster/
 
 install on alt1: alt1://addapp/https://ellamental2.github.io/RotationMaster/appconfig.json

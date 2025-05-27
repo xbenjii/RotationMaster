@@ -51,6 +51,15 @@
       "changes": [
         "The add action button wasn't working, sorry! it's fixed now."
       ]
+    },
+    {
+      "version": "2.2.0",
+      "description": "Allow multiple rotations per set",
+      "changes": [
+        "Rotations are now saved in sets, the sets will contain one or many rotations! This means you can have a rotation for each phase of a boss, or just for convenience.",
+        "Added the ability to have multiple rotations per set.",
+        "Updated the UI to accommodate multiple rotations."
+      ]
     }
   ]
 }

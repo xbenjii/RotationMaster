@@ -363,6 +363,7 @@ const renderDropdowns = (rotationIndex: number) => {
     deleteButton.addEventListener('click', () => {
       dropdowns.splice(dropdownIndex, 1);
       renderDropdowns(rotationIndex);
+      renderRotationPreview(rotationIndex);
     });
 
     // Add buttons to the buttonGroup div
@@ -728,6 +729,7 @@ clearButtons.forEach((button, index) => {
 
 // Function to update the overlay div
 const renderRotationPreview = (rotationIndex: number) => {
+
   // Get the specific rotation from the rotation set
   const rotation = rotationSet.data[rotationIndex];
   if (!rotation) {
@@ -745,40 +747,8 @@ const renderRotationPreview = (rotationIndex: number) => {
   previewContainer.innerHTML = '';
 
   const numImagesPerRow = sauce.getSetting('ablitiesPerRow') || 8;
+  const selectedAbilities = rotation.data.filter((dropdown: Dropdown) => dropdown.selectedAbility !== null);
   const rowSpacer = '<span class="row-spacer"> > </span>';
-
-  // Generate the preview content based on the dropdowns in the rotation
-  let currentRow: HTMLDivElement | null = null;
-  rotation.data.forEach((dropdown, dropdownIndex) => {
-    if (dropdownIndex % numImagesPerRow === 0) {
-      if (currentRow) {
-        // Add a row spacer at the start of the new row (except the first)
-        currentRow.innerHTML += rowSpacer;
-      }
-      currentRow = document.createElement('div');
-      currentRow.className = 'preview-row';
-      previewContainer.appendChild(currentRow);
-    }
-
-    // Add a row spacer between ability images (except the first in the row)
-    if (dropdownIndex % numImagesPerRow !== 0) {
-      currentRow!.innerHTML += rowSpacer;
-    }
-
-    // Create the ability preview element
-    const abilityElement = document.createElement('div');
-    abilityElement.className = 'ability-preview';
-
-    if (dropdown.selectedAbility) {
-      abilityElement.innerHTML = `<img src="${dropdown.selectedAbility.Src}" alt="${dropdown.selectedAbility.Title}" title="${dropdown.selectedAbility.Title}" class="ability-image">`;
-    } else {
-      abilityElement.textContent = `No ability selected`;
-      abilityElement.classList.add('empty');
-    }
-
-    // Append the ability element to the current row
-    currentRow?.appendChild(abilityElement);
-  });
 
   const detailsContainer = getById(`rotation-details-${rotationIndex}`);
   if (!detailsContainer) {
@@ -787,19 +757,55 @@ const renderRotationPreview = (rotationIndex: number) => {
   }
 
   const toggleDetailsButton = document.createElement('button');
-  toggleDetailsButton.className = 'toggleDetailsButton';
+  toggleDetailsButton.classList.add('toggleDetailsButton');
+  toggleDetailsButton.classList.add('nisbutton');
   toggleDetailsButton.innerHTML = detailsContainer.style.display === 'none' ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>';
 
+
+  const rotPreview = document.createElement('div');
+  rotPreview.className = 'rotation-preview';
+  rotPreview.id = `rotation-preview-${rotationIndex}`;
+
+  const rows: string[] = [];
+
+  for (let i = 0; i < selectedAbilities.length; i += numImagesPerRow) {
+    const rowImages = selectedAbilities
+      .slice(i, i + numImagesPerRow)
+      .map(
+        (dropdown: Dropdown) => {
+          return `<img class="ability-image" src="${dropdown.selectedAbility!.Src}" alt="${dropdown.selectedAbility!.Emoji }" title="${dropdown.selectedAbility!.Emoji}">`
+        })
+      .join(rowSpacer);
+
+    const rowPrefix = i === 0 ? '' : rowSpacer; // Add row spacer only if it's not the first row
+    rows.push(`<div class="rotation-row">${rowPrefix}${rowImages}</div>`);
+  }
+
+  if (rows.length === 0) {
+    rotPreview.style.visibility = 'hidden';
+    toggleDetailsButton.style.visibility = 'hidden';
+  }
+  else {
+    rotPreview.innerHTML = rows.join('');
+    rotPreview.style.visibility = 'visible';
+    toggleDetailsButton.style.visibility = 'visible';
+  }
+
+  previewContainer.appendChild(rotPreview);
+  
+  
   // Add event listener to toggle the visibility of the details container
   toggleDetailsButton.addEventListener('click', () => {
     if (detailsContainer.style.display === 'none') {
       detailsContainer.style.display = 'block';
-      toggleDetailsButton.textContent = '<i class="fa-solid fa-chevron-down"></i>';
+      toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
     } else {
       detailsContainer.style.display = 'none';
-      toggleDetailsButton.textContent = '<i class="fa-solid fa-chevron-up"></i>';
+      toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
     }
   });
+
+  previewContainer.appendChild(toggleDetailsButton);
 };
 // Add a listener for changes to #abilitiesPerRow
 getById('abilitiesPerRow')?.addEventListener('input', () => {
@@ -873,7 +879,7 @@ function updateLocation(e : any) {
   );
 }
 
-const currentVersion = '2.1.2';
+const currentVersion = '2.2.0';
 const settingsObject = {
   settingsHeader: sauce.createHeading(
     'h2',

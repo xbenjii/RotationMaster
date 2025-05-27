@@ -539,7 +539,7 @@ function initSettings() {
         overlayPosition: { x: 100, y: 100 },
         uiScale: 100,
         updatingOverlayPosition: false,
-        lastKnownVersion: '1.0.0' // Initial version
+        lastKnownVersion: '0.0.1' // Initial version
       })
     )
   }
@@ -590,7 +590,7 @@ function updateLocation(e : any) {
   );
 }
 
-const currentVersion = '2.1.0';
+const currentVersion = '2.1.1';
 const settingsObject = {
   settingsHeader: sauce.createHeading(
     'h2',
@@ -634,7 +634,7 @@ async function fetchPatchNotes(): Promise<any> {
 
 // Function to check the version and display patch notes
 async function checkAndShowPatchNotes(currentVersion: string) {
-  const lastKnownVersion = sauce.getSetting('lastKnownVersion') || '1.0.0'; // Default to an initial version if not set'
+  const lastKnownVersion = sauce.getSetting('lastKnownVersion') || '0.0.1'; // Default to an initial version if not set'
   
   if (lastKnownVersion == currentVersion) {
     return;
@@ -647,6 +647,22 @@ async function checkAndShowPatchNotes(currentVersion: string) {
   const newPatches = patchNotes.patches.filter(
     (patch: any) => !lastKnownVersion || patch.version > lastKnownVersion
   );
+
+  newPatches.sort((a: any, b: any) => {
+    const versionA = a.version.split('.').map(Number);
+    const versionB = b.version.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(versionA.length, versionB.length); i++) {
+      const numA = versionA[i] || 0; // Default to 0 if undefined
+      const numB = versionB[i] || 0; // Default to 0 if undefined
+      if (numA !== numB) {
+        return numB - numA; // Sort descending
+      }
+    }
+    return 0; // Versions are equal
+  });
+
+
 
   // Display patch notes
   if (newPatches.length > 0) {
@@ -689,8 +705,65 @@ async function checkAndShowPatchNotes(currentVersion: string) {
   sauce.updateSetting('lastKnownVersion', currentVersion);
   const newVersion = sauce.getSetting('lastKnownVersion');
   console.log(`Updated last known version to: ${newVersion}`);
-
 }
+
+async function ShowAllPatchNotes() {
+  const patchNotes = await fetchPatchNotes();
+  const patches = patchNotes?.patches || [];
+
+  //sort by version descending
+  patches.sort((a: any, b: any) => {
+    const versionA = a.version.split('.').map(Number);
+    const versionB = b.version.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(versionA.length, versionB.length); i++) {
+      const numA = versionA[i] || 0; // Default to 0 if undefined
+      const numB = versionB[i] || 0; // Default to 0 if undefined
+      if (numA !== numB) {
+        return numB - numA; // Sort descending
+      }
+    }
+    return 0; // Versions are equal
+  });
+    
+  // Display patch notes
+  if (patches.length > 0) {
+    console.log('New Patch Notes:');
+    patches.forEach((patch: any) => {
+      console.log(`Version: ${patch.version}`);
+      console.log(`Description: ${patch.description}`);
+      console.log('Changes:');
+      patch.changes.forEach((change: string) => console.log(`- ${change}`));
+    });
+
+    const patchNotesContainer = getById('patch-notes-container');
+    const patchNotesContent = getById('patch-notes-content');
+    if (patchNotesContainer && patchNotesContent) {
+      // Populate the patch notes content
+      patchNotesContent.innerHTML = patches
+        .map(
+          (patch: any) => `
+              <h2>Version: ${patch.version}</h2>
+              <p>${patch.description}</p>
+              <ul>
+                ${patch.changes.map((change: string) => `<li>${change}</li>`).join('')}
+              </ul>
+            `
+        )
+        .join('<hr style="margin: 20px 0, border: 1px solid #ccc" />');
+
+      // Show the patch notes container
+      patchNotesContainer.style.display = 'block';
+
+      // Add event listener to close button
+      const closeButton = getById('close-patch-notes');
+      closeButton?.addEventListener('click', () => {
+        patchNotesContainer.style.display = 'none';
+      });
+    }
+  }
+}
+getById('showPatchNotesButton')?.addEventListener('click', ShowAllPatchNotes);
 
 let helperItems = {
   Output: getById('output'),

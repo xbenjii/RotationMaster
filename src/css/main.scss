@@ -16,6 +16,29 @@ html, body {
   margin: 0;
 }
 
+#patch-notes-container {
+  display: none;
+  position: fixed; /* Use fixed to center it relative to the viewport */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Center the container */
+  width: 80%; /* Take up 80% of the viewport width */
+  max-height: 80%; /* Limit the height to 80% of the viewport */
+  background: black;
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  padding: 20px;
+  border-radius: 8px;
+  overflow: auto; /* Enable scrolling if content overflows */
+}
+
+#patch-notes-content {
+  max-height: calc(100% - 50px); /* Ensure content fits within the container */
+  overflow-y: auto; /* Add vertical scrolling for content */
+  overflow-x: auto; /* Add horizontal scrolling for content */
+}
+
 #RotationMaster {
   width: 100%;
   text-align: center;
@@ -29,12 +52,32 @@ html, body {
   color: #F1F1F1;
 }
 
+.mainHeader {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  height: 100%; /* Ensure it takes up the full height of the parent */
+}
+
+
 #Settings {
   display: flex; /* Use Flexbox for centering */
   flex-direction: column; /* Optional: Stack children vertically */
   justify-content: center; /* Center vertically */
   align-items: center; /* Center horizontally */
   padding: 1rem; /* Add some padding */
+}
+
+#Title {
+    color: #ffcb05;
+    text-shadow: 1px 1px #000000;
+}
+
+#rotationNameLabel {
+  font-family: sans-serif;
+  font-size: 14px;
+  color: #94afbd;
+  text-shadow: 1px 1px #000000;
 }
 
 #Settings a {

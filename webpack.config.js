@@ -63,16 +63,20 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         {
-          from: path.resolve(__dirname, 'src/asset'), // Source folder
-          to: path.resolve(__dirname, 'dist/asset'), // Destination folder
+          from: path.resolve(__dirname, 'src/asset'),
+          to: path.resolve(__dirname, 'dist/asset'),
         },
         {
-          from: path.resolve(__dirname, 'src/appconfig.json'), // Source folder
-          to: path.resolve(__dirname, 'dist/appconfig.json'), // Destination folder
+          from: path.resolve(__dirname, 'src/appconfig.json'),
+          to: path.resolve(__dirname, 'dist/appconfig.json'),
         },
         {
-          from: path.resolve(__dirname, 'src/icon.png'), // Source folder
-          to: path.resolve(__dirname, 'dist/icon.png'), // Destination folder
+          from: path.resolve(__dirname, 'src/icon.png'),
+          to: path.resolve(__dirname, 'dist/icon.png'),
+        },
+        {
+          from: path.resolve(__dirname, 'src/patchnotes.json'),
+          to: path.resolve(__dirname, 'dist/patchnotes.json')
         }
       ],
     }),

@@ -6,10 +6,30 @@ import * as htmlToImage from 'html-to-image';
 
 var currentOverlayPosition = sauce.getSetting('overlayPosition');
 let updatingOverlayPosition = false;
+let savedRotationsCache: Rotation[] = [];
 
+const loadSavedRotations = () => {
+  const cachedRotations = localStorage.getItem('savedRotations');
+  savedRotationsCache = cachedRotations ? JSON.parse(cachedRotations) : [];
+};
+
+
+const elementCache: Record<string, HTMLElement | null> = {};
 
 // Utility function to get elements by ID
-const getByID = (id: string): HTMLElement | null => document.getElementById(id);
+function getById(id: string): HTMLElement | null {
+  // Check if the element is already cached
+  if (elementCache[id]) {
+    return elementCache[id];
+  }
+
+  // If not cached, retrieve the element from the DOM
+  const element = document.getElementById(id);
+  // save to cache
+  elementCache[id] = element;
+
+  return element;
+}
 
 // Define variables
 let rotationName = '';
@@ -36,10 +56,10 @@ const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
 
 // Function to render dropdowns (placeholder for your existing logic)
 const renderDropdowns = () => {
-  const dropdownContainer = getByID('dropdowns-container');
+  const dropdownContainer = getById('dropdowns-container');
   if (!dropdownContainer) return;
 
-  dropdownContainer.innerHTML = ''; // Clear existing dropdowns
+  const fragment = document.createDocumentFragment();
 
   dropdowns.forEach((dropdown, index) => {
     const dropdownDiv = document.createElement('div');
@@ -50,15 +70,25 @@ const renderDropdowns = () => {
     filterInput.type = 'text';
     filterInput.placeholder = 'Search...';
     filterInput.className = 'nisinput';
-    filterInput.addEventListener('input', (e) => {
-      const filter = (e.target as HTMLInputElement).value.toLowerCase();
-      const filteredAbilities = abilities.filter(
-        (a: any) =>
-          a.Category.toLowerCase().includes(filter) ||
-          a.Emoji.toLowerCase().includes(filter)
-      );
-      updateDropdownOptions(selectElement, filteredAbilities);
-    });
+    const debounce = (func: Function, delay: number) => {
+      let timeout: NodeJS.Timeout;
+      return (...args: any[]) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), delay);
+      };
+    };
+    filterInput.addEventListener(
+      'input',
+      debounce((e : any) => {
+        const filter = (e.target as HTMLInputElement).value.toLowerCase();
+        const filteredAbilities = abilities.filter(
+          (a: any) =>
+            a.Category.toLowerCase().includes(filter) ||
+            a.Emoji.toLowerCase().includes(filter)
+        );
+        updateDropdownOptions(selectElement, filteredAbilities);
+      }, 300)
+    );
 
     // Create the dropdown select
     const selectElement = document.createElement('select');
@@ -152,8 +182,11 @@ const renderDropdowns = () => {
     dropdownDiv.appendChild(buttonGroup);
 
     // Append the dropdown container to the main container
-    dropdownContainer.appendChild(dropdownDiv);
+    fragment.appendChild(dropdownDiv);
   });
+
+  dropdownContainer.innerHTML = ''; // Clear existing dropdowns
+  dropdownContainer.appendChild(fragment);
 };
 
 const updateDropdownOptions = (selectElement: HTMLSelectElement, abilities: Ability[]) => {
@@ -167,7 +200,7 @@ const updateDropdownOptions = (selectElement: HTMLSelectElement, abilities: Abil
 };
 
 // Handle rotation name input
-const rotationNameInput = getByID('rotation-name') as HTMLInputElement;
+const rotationNameInput = getById('rotation-name') as HTMLInputElement;
 if (rotationNameInput) {
   rotationNameInput.addEventListener('input', (e) => {
     rotationName = (e.target as HTMLInputElement).value;
@@ -202,31 +235,23 @@ const populateSavedRotations = () => {
 
 // Save rotation
 const saveRotation = (rotationName: string, rotationData: any) => {
-  // Retrieve existing rotations from localStorage
-  const cachedRotations = localStorage.getItem("savedRotations");
-  const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
-
-  // Check if the rotation name already exists
-  const existingIndex = savedRotations.findIndex(
-    (rotation: { name: string }) => rotation.name === rotationName
+  const existingIndex = savedRotationsCache.findIndex(
+    (rotation) => rotation.name === rotationName
   );
 
   if (existingIndex !== -1) {
-    // Overwrite the existing rotation
-    savedRotations[existingIndex] = { name: rotationName, data: rotationData };
+    savedRotationsCache[existingIndex] = { name: rotationName, data: rotationData };
   } else {
-    // Add a new rotation
-    savedRotations.push({ name: rotationName, data: rotationData });
+    savedRotationsCache.push({ name: rotationName, data: rotationData });
   }
 
-  // Save the updated rotations back to localStorage
-  localStorage.setItem("savedRotations", JSON.stringify(savedRotations));
+  localStorage.setItem('savedRotations', JSON.stringify(savedRotationsCache));
 
   // Refresh the dropdown
   populateSavedRotations();
 
   // set the selected rotation to the one you just saved
-  const rotationDropdown = getByID('savedRotations') as HTMLSelectElement;
+  const rotationDropdown = getById('savedRotations') as HTMLSelectElement;
   if (rotationDropdown) {
     const option = Array.from(rotationDropdown.options).find((opt) => opt.value === rotationName);
     if (option) {
@@ -246,7 +271,7 @@ const handleSaveRotation = () => {
   alert("Rotation saved successfully!");
 };
 // Expose function to the global scope so it can be called from HTML
-(window as any).handleSaveRotation = handleSaveRotation;
+getById('saveButton')?.addEventListener('click', handleSaveRotation);
 
 const handleExportRotation = () => {
   console.log("Exporting Rotation");
@@ -261,7 +286,7 @@ const handleExportRotation = () => {
   link.click();
   URL.revokeObjectURL(url);
 }
-(window as any).handleExportRotation = handleExportRotation;
+getById('exportButton')?.addEventListener('click', handleExportRotation);
 
 const handleImportRotation = () => {
   console.log("Importing Rotation")
@@ -338,7 +363,7 @@ const handleImportRotation = () => {
   // Trigger the file input dialog
   fileInput.click();
 };
-(window as any).handleImportRotation = handleImportRotation;
+getById('importButton')?.addEventListener('click', handleImportRotation);
 
 const handleSwitchRotation = (rotationName: string) => {
   // Retrieve the saved rotations from localStorage
@@ -356,7 +381,7 @@ const handleSwitchRotation = (rotationName: string) => {
   }
 
   // change the rotation name input to the selected rotation name
-  const rotationNameInput = getByID('rotation-name') as HTMLInputElement;
+  const rotationNameInput = getById('rotation-name') as HTMLInputElement;
   if (rotationNameInput) {
     rotationNameInput.value = selectedRotation.name;
   }
@@ -377,28 +402,21 @@ const handleSwitchRotation = (rotationName: string) => {
   // Update the overlay
   renderRotationPreview();
 };
-
+getById('savedRotations')?.addEventListener('change', (e) => {
+  const selectedRotation = (e.target as HTMLSelectElement).value;
+  handleSwitchRotation(selectedRotation);
+});
 
 const addDropdown = () => {
-  console.log('Add New button clicked');
   dropdowns.push({ selectedAbility: null });
   renderDropdowns();
 }
-(window as any).addDropdown = addDropdown;
+getById('addActionButton')?.addEventListener('click', addDropdown);
 
-// Populate rotation dropdown
-const rotationDropdown = getByID('savedRotations') as HTMLSelectElement;
-
-
-if (rotationDropdown) {
-  rotationDropdown.addEventListener('change', (e) => {
-    const selectedRotation = (e.target as HTMLSelectElement).value;
-    handleSwitchRotation(selectedRotation);
-  });
-}
 
 // Delete rotation
 const deleteRotation = () => {
+  const rotationDropdown = getById('savedRotations') as HTMLSelectElement;
   const selectedRotation = rotationDropdown?.value;
   if (!selectedRotation) {
     alert('Please select a rotation to delete.');
@@ -415,30 +433,21 @@ const deleteRotation = () => {
     clearDropdowns();
   }
 };
-(window as any).deleteRotation = deleteRotation;
-
-const deleteButton = getByID('delete-button');
-if (deleteButton) {
-  deleteButton.addEventListener('click', deleteRotation);
-}
+getById('deleteRotButton')?.addEventListener('click', deleteRotation);
 
 // Clear all dropdowns
 const clearDropdowns = () => {
   console.log("clearing dropdowns " + dropdowns.length);
   dropdowns.splice(0, dropdowns.length); // Clear the array by removing all elements
   renderDropdowns();
+  renderRotationPreview();
 };
-(window as any).clearDropdowns = clearDropdowns;
-
-const clearButton = getByID('clear-button');
-if (clearButton) {
-  clearButton.addEventListener('click', clearDropdowns);
-}
+getById('clearButton')?.addEventListener('click', clearDropdowns);
 
 // Function to update the overlay div
 const renderRotationPreview = () => {
-  const overlay = getByID('rotation-preview');
-  const toggle = getByID('toggle-details');
+  const overlay = getById('rotation-preview');
+  const toggle = getById('toggleDetailsButton');
   if (!overlay || !toggle) return;
 
   // Get the number of images per row from settings
@@ -476,11 +485,15 @@ const renderRotationPreview = () => {
   overlay.style.visibility = 'visible';
   toggle.style.visibility = 'visible';
 };
+// Add a listener for changes to #abilitiesPerRow
+getById('abilitiesPerRow')?.addEventListener('input', () => {
+  renderRotationPreview();
+});
 
 let detailsAreHidden = false;
 const handleToggleDetails = () => {
-  const toggleDetailsButton = getByID('toggle-details') as HTMLElement;
-  const detailsContainer = getByID('rotation-details') as HTMLElement;
+  const toggleDetailsButton = getById('toggleDetailsButton') as HTMLElement;
+  const detailsContainer = getById('rotation-details') as HTMLElement;
 
   if (!toggleDetailsButton || !detailsContainer) {
     console.error('one or more elements failed to load')
@@ -498,7 +511,7 @@ const handleToggleDetails = () => {
 
   detailsAreHidden = !detailsAreHidden;
 }
-(window as any).handleToggleDetails = handleToggleDetails;
+getById('toggleDetailsButton')?.addEventListener('click', handleToggleDetails);
 
 let config = {
   appName: 'rotationMaster',
@@ -529,7 +542,7 @@ async function setOverlayPosition() {
   );
   while (updatingOverlayPosition) {
     alt1.setTooltip('Press Alt+1 to save position');
-    let abilitiesElement = getByID('Abilities');
+    let abilitiesElement = getById('Abilities');
     sauce.updateSetting('overlayPosition', {
       x: Math.floor(
         A1.getMousePosition()?.x ?? 100 -
@@ -548,7 +561,7 @@ async function setOverlayPosition() {
 }
 
 function updateLocation(e : any) {
-  let abilitiesElement = getByID('Abilities');
+  let abilitiesElement = getById('Abilities');
   sauce.updateSetting('overlayPosition', {
     x: Math.floor(
       e.x - (sauce.getSetting('uiScale') / 100) * (abilitiesElement?.offsetWidth ?? 2 / 2)
@@ -602,12 +615,13 @@ const settingsObject = {
 }
 
 let helperItems = {
-  Output: getByID('output'),
-  RotationMaster: getByID('RotationMaster'),
-  Abilities: getByID('Abilities'),
+  Output: getById('output'),
+  RotationMaster: getById('RotationMaster'),
+  Abilities: getById('Abilities'),
 }
 
 function startRotationMaster() {
+  loadSavedRotations();
   populateSavedRotations();
   renderDropdowns();
   renderRotationPreview();
@@ -634,29 +648,31 @@ function startRotationMaster() {
     return;
   }
 
-  const trackedRegion = getByID('rotation-preview');
+  const trackedRegion = getById('rotation-preview');
   if (trackedRegion)
     startOverlay(trackedRegion);
 }
 
 async function startOverlay(element: HTMLElement) {
-  let overlay = element;
-  let styles = getComputedStyle(overlay);
-  let refreshRate = parseInt(sauce.getSetting('overlayRefreshRate'), 10);
-  let abilitiesPerRow = sauce.getSetting('ablitiesPerRow');
+  const overlay = element;
+  const styles = getComputedStyle(overlay);
+  const refreshRate = parseInt(sauce.getSetting('overlayRefreshRate'), 10);
   let overlayPosition;
-  //total tracked items is equal to the number of dropdowns with a value
-  let totalTrackedItems = dropdowns.filter((dropdown) => dropdown.selectedAbility).length;
-  while (true) {
-    let uiScale = sauce.getSetting('uiScale');
+
+  const updateOverlay = async () => {
+    const uiScale = sauce.getSetting('uiScale');
+    const abilitiesPerRow = sauce.getSetting('ablitiesPerRow');
     overlayPosition = currentOverlayPosition;
+
     try {
-      let dataUrl = await htmlToImage.toCanvas(overlay, {
+      const totalTrackedItems = dropdowns.filter((dropdown) => dropdown.selectedAbility).length;
+      const dataUrl = await htmlToImage.toCanvas(overlay, {
         backgroundColor: 'transparent',
+        skipFonts: true,
         width: parseInt(styles.minWidth, 10),
         height:
           parseInt(styles.minHeight, 10) +
-          Math.floor((totalTrackedItems / abilitiesPerRow)+1) *
+          Math.floor((totalTrackedItems / abilitiesPerRow) + 1) *
           27 *
           (uiScale / 100),
         quality: 1,
@@ -664,9 +680,9 @@ async function startOverlay(element: HTMLElement) {
         skipAutoScale: true,
       });
 
-      let base64ImageString = dataUrl
+      const base64ImageString = dataUrl
         .getContext('2d')
-        ?.getImageData(0, 0, dataUrl.width, dataUrl.height)
+        ?.getImageData(0, 0, dataUrl.width, dataUrl.height);
 
       if (base64ImageString) {
         alt1.overLaySetGroup('region');
@@ -680,17 +696,20 @@ async function startOverlay(element: HTMLElement) {
           refreshRate
         );
         alt1.overLayRefreshGroup('region');
-      }
-      else {
+      } else {
         alt1.overLayClearGroup('region');
         alt1.overLayRefreshGroup('region');
       }
-      
     } catch (e) {
       console.error(`html-to-image failed to capture`, e);
     }
-    await sauce.timeout(refreshRate);
-  }
+
+    //Schedule the next update
+    setTimeout(() => requestAnimationFrame(updateOverlay), refreshRate);
+  };
+
+  // Start the first update
+  requestAnimationFrame(updateOverlay);
 }
 
 // Initialize the app
@@ -704,7 +723,7 @@ const App = () => {
     Object.values(settingsObject).forEach((val) => {
       settings?.before(val);
     });
-    var abilitiesPerRowInput = getByID('abilitiesPerRow');
+    var abilitiesPerRowInput = getById('abilitiesPerRow');
     //  add nisinput to ablilitiesPerRowInput
     if (abilitiesPerRowInput) {
       abilitiesPerRowInput.classList.add('nisinput');
@@ -713,28 +732,6 @@ const App = () => {
     startRotationMaster();
   }
 };
-
-// event listeners
-const savedRotationsDropdown = getByID('savedRotations') as HTMLSelectElement;
-if (savedRotationsDropdown) {
-  savedRotationsDropdown.addEventListener('change', (e) => {
-    const selectedRotation = (e.target as HTMLSelectElement).value;
-    handleSwitchRotation(selectedRotation);
-  });
-}
-
-// Add a listener for changes to #abilitiesPerRow
-const abilitiesPerRowInput = getByID('abilitiesPerRow') as HTMLInputElement;
-if (abilitiesPerRowInput) {
-  abilitiesPerRowInput.addEventListener('input', () => {
-    renderRotationPreview();
-  });
-}
-
-const addButton = getByID('add-button');
-if (addButton) {
-  addButton.addEventListener('click', addDropdown);
-}
 
 // Start the app
 App();

@@ -31,7 +31,7 @@
 
           <!--{/* Save, Export, and Import Buttons */}-->
           <div>
-            <button class="nisbutton" onClick=handleSaveRotation()>
+            <button id="saveButton" class="nisbutton">
               Save
             </button>
             <!--{/* Dropdown to switch between saved rotations */}-->
@@ -40,10 +40,10 @@
                     style="margin-left: 10px">
               Options will be dynamically populated
             </select>
-            <button class="nisbutton" onClick="deleteRotation()" title="Delete Selected Rotation">
+            <button id="deleteRotButton" class="nisbutton" title="Delete Selected Rotation">
               <i class="fas fa-trash-alt"></i>
             </button>
-            <button class="nisbutton" onClick="handleExportRotation()">
+            <button id="exportButton" class="nisbutton"">
               Export
             </button>
             <input type="file"
@@ -52,7 +52,7 @@
                    style="display: none"
                    id="import-file" />
             <label htmlFor="import-file">
-              <button class="nisbutton" onClick="handleImportRotation()">
+              <button id="importButton" class="nisbutton">
                 Import
               </button>
             </label>
@@ -61,9 +61,8 @@
 
           <div id="dropdown-preview">
             <div id="rotation-preview" class="rotation-preview"></div>
-            <button id="toggle-details"
-                    class="nisbutton"
-                    onClick="handleToggleDetails()" ;>
+            <button id="toggleDetailsButton"
+                    class="nisbutton";>
               <i class="fa-solid fa-chevron-down"></i>
             </button>
           </div>
@@ -73,7 +72,7 @@
               <button onClick=addDropdown() class="nisbutton add-button">
                 Add Action
               </button>
-              <button onClick="clearDropdowns()"
+              <button id="clearButton"
                       class="nisbutton"
                       style="margin-left: 10px">
                 <i class="fas fa-trash-alt"></i> Clear All

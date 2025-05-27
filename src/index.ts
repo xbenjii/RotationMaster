@@ -6,13 +6,36 @@ import * as htmlToImage from 'html-to-image';
 
 var currentOverlayPosition = sauce.getSetting('overlayPosition');
 let updatingOverlayPosition = false;
-let savedRotationsCache: Rotation[] = [];
+let savedRotationsCache: RotationSet[] = [];
 
 const loadSavedRotations = () => {
   const cachedRotations = localStorage.getItem('savedRotations');
-  savedRotationsCache = cachedRotations ? JSON.parse(cachedRotations) : [];
-};
 
+  if (cachedRotations) {
+    const parsedRotations = JSON.parse(cachedRotations);
+
+    if (Array.isArray(parsedRotations) && parsedRotations.length > 0) {
+      if ('data' in parsedRotations[0]) {
+        // If it's already a RotationSet, assign it directly
+        savedRotationsCache = parsedRotations as RotationSet[];
+      } else {
+        // If it's a Rotation, convert it to RotationSets
+        savedRotationsCache = parsedRotations.map((rotation: Rotation) => ({
+          name: `Rotation ${rotation.id}`, // Use a default name or derive it from the rotation
+          data: [{ ...rotation, id: 0 }], // Wrap the rotation in a RotationSet
+          selectedIndex: 0
+        }));
+
+        // Override the localStorage with the updated RotationSet data
+        localStorage.setItem('savedRotations', JSON.stringify(savedRotationsCache));
+      }
+    } else {
+      savedRotationsCache = [];
+    }
+  } else {
+    savedRotationsCache = [];
+  }
+};
 
 const elementCache: Record<string, HTMLElement | null> = {};
 
@@ -34,13 +57,19 @@ function getById(id: string): HTMLElement | null {
 // Define variables
 let rotationName = '';
 
+type RotationSet = {
+  name: string; // Name of the rotation set
+  data: Rotation[]; // Array of Rotation objects
+  selectedIndex: number //tracks the selected Rotation
+};
+type Rotation = {
+  id: number
+  name: string;
+  data: Dropdown[];
+};
 type Dropdown = {
   selectedAbility: Ability | null; // The currently selected ability, or null if none is selected
 };
-type Rotation = {
-  name: string;
-  data: Ability[];
-}
 type Ability = {
   Title: string;
   Emoji: string;       // The emoji representing the ability
@@ -48,22 +77,189 @@ type Ability = {
   Category: string;    // The category of the ability
   Src: string;         // The source URL for the ability's image
 };
-const dropdowns: Dropdown[] = []; // Initialize as an empty array
 
 // Retrieve saved rotations from localStorage
 const cachedRotations = localStorage.getItem("savedRotations");
 const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
 
-// Function to render dropdowns (placeholder for your existing logic)
-const renderDropdowns = () => {
-  const dropdownContainer = getById('dropdowns-container');
-  if (!dropdownContainer) return;
+let rotationSet: RotationSet; // Initialize as an empty array
 
-  const fragment = document.createDocumentFragment();
+const renderRotationContainers = () => {
+  const container = getById('rotationContainers');
+  if (!container) return;
 
-  dropdowns.forEach((dropdown, index) => {
+  container.innerHTML = ''; // Clear existing containers
+
+  rotationSet.data.forEach((rotation, index) => {
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'rotation-label-container';
+    labelDiv.id = `rotation-label-${rotation.id}`; // Use the id property
+
+    const rotationDiv = document.createElement('div');
+    rotationDiv.className = 'rotationContainer';
+    rotationDiv.id = `rotationContainer-${rotation.id}`; // Use the id property
+
+    // Add a radio button for selecting the rotation
+    const radioButton = document.createElement('input');
+    radioButton.type = 'radio';
+    radioButton.name = 'rotationSelector'; // Group all radio buttons
+    radioButton.id = `rotationRadio-${rotation.id}`;
+    radioButton.checked = rotationSet.selectedIndex === index; // Check if this is the selected rotation
+
+    // Update the selectedIndex when the radio button is clicked
+    radioButton.addEventListener('change', () => {
+      rotationSet.selectedIndex = index;
+      console.log(`Selected rotation: ${rotation.name}`);
+    });
+
+    // Append the radio button and label to the rotation div
+    labelDiv.appendChild(radioButton);
+
+    // Add dropdown preview and details
+    const rotationLabel = document.createElement('input');
+    rotationLabel.type = 'text';
+    rotationLabel.className = 'nisinput rotation-name-input'
+    rotationLabel.value = rotation.name;
+    rotationLabel.placeholder = 'Enter rotation name';
+    rotationLabel.id = `rotation-name-${rotation.id}`;
+    rotationLabel.addEventListener('input', (e) => {
+      rotation.name = (e.target as HTMLInputElement).value.trim();
+    });
+    labelDiv.appendChild(rotationLabel);
+
+    rotationDiv.appendChild(labelDiv);
+    const dropdownsContainer = document.createElement('div');
+    dropdownsContainer.className = 'dropdowns-container';
+    dropdownsContainer.id = `dropdowns-container-${rotation.id}`;
+
+    const dropdownPreview = document.createElement('div');
+    dropdownPreview.className = 'dropdown-preview';
+    dropdownPreview.id = `dropdown-preview-${rotation.id}`;
+    dropdownsContainer.appendChild(dropdownPreview);
+
+    const rotationDetails = document.createElement('div');
+    rotationDetails.className = 'dropdown-details';
+    rotationDetails.id = `rotation-details-${rotation.id}`;
+
+    const dropdownContainer = document.createElement('div');
+    dropdownContainer.id = `dropdown-container-${rotation.id}`;
+    dropdownContainer.innerHTML = '<p>Loading dropdowns...</p>'; // Placeholder text
+    rotationDetails.appendChild(dropdownContainer);
+
+    const dropdownControls = document.createElement('div');
+    dropdownControls.id = `dropdown-controls-${rotation.id}`;
+    dropdownControls.style.marginTop = '10px';
+
+    const addDropdownButton = document.createElement('button');
+    addDropdownButton.id = 'dropdown-add-button';
+    addDropdownButton.className = 'nisbutton addDropdownButton';
+    addDropdownButton.textContent = 'Add Action';
+    addDropdownButton.addEventListener('click', () => addDropdown(rotation.id))
+    dropdownControls.appendChild(addDropdownButton);
+
+    const clearButton = document.createElement('button');
+    clearButton.id = 'clearButton';
+    clearButton.className = 'nisbutton clearButton';
+    clearButton.style.marginLeft = '10px';
+    clearButton.innerHTML = '<i class="fas fa-trash-alt"></i> Clear All';
+    clearButton.addEventListener('click', () => clearDropdowns(rotation.id));
+    dropdownControls.appendChild(clearButton);
+
+    rotationDetails.appendChild(dropdownControls);
+    dropdownsContainer.appendChild(rotationDetails);
+    rotationDiv.appendChild(dropdownsContainer);
+
+    // Add buttons for reordering and deleting
+    const moveUpButton = document.createElement('button');
+    moveUpButton.classList.add('nisbutton');
+    moveUpButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+    moveUpButton.disabled = index === 0;
+    moveUpButton.onclick = () => {
+      if (index > 0) {
+        [rotationSet.data[index - 1], rotationSet.data[index]] = [rotationSet.data[index], rotationSet.data[index - 1]];
+        renderRotationContainers();
+      }
+    };
+
+    const moveDownButton = document.createElement('button');
+    moveDownButton.classList.add('nisbutton');
+    moveDownButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+    moveDownButton.disabled = index === rotationSet.data.length - 1;
+    moveDownButton.onclick = () => {
+      if (index < rotationSet.data.length - 1) {
+        [rotationSet.data[index], rotationSet.data[index + 1]] = [rotationSet.data[index + 1], rotationSet.data[index]];
+        renderRotationContainers();
+      }
+    };
+
+    const deleteButton = document.createElement('button');
+    deleteButton.classList.add('nisbutton');
+    deleteButton.innerHTML = '<i class="fas fa-trash-alt" > </i>';
+    deleteButton.onclick = () => {
+      if (rotationSet.data.length > 1) {
+        rotationSet.data.splice(index, 1);
+        renderRotationContainers();
+      }
+    };
+
+    // Append buttons to the rotation div
+    const controlDiv = document.createElement('div');
+    controlDiv.className = 'rotation-controls';
+
+    controlDiv.appendChild(moveUpButton);
+    controlDiv.appendChild(moveDownButton);
+    controlDiv.appendChild(deleteButton);
+
+    rotationDiv.appendChild(controlDiv);
+    // Append the rotation div to the container
+    container.appendChild(rotationDiv);
+
+    renderDropdowns(rotation.id);
+    renderRotationPreview(rotation.id);
+  });
+};
+
+const addRotationContainer = () => {
+  const newRotation: Rotation = {
+    id: rotationSet?.data.length ?? 0, // Assign a unique id
+    name: `Rotation ${(rotationSet?.data.length ?? 0) + 1}`, // Default name
+    data: [], // Initialize with an empty dropdowns array
+  };
+  if (!rotationSet) {
+    rotationSet = {
+      name: 'New Rotation Set',
+      data: [],
+      selectedIndex: 0 // Initialize with the first rotation selected
+    }
+  }
+  rotationSet.data.push(newRotation);
+  renderRotationContainers();
+};
+getById('addRotationContainerButton')?.addEventListener('click', addRotationContainer);
+
+const renderDropdowns = (rotationIndex: number) => {
+  // Get the specific dropdown container for the given rotation index
+  const dropdownContainer = getById(`dropdown-container-${rotationIndex}`);
+  if (!dropdownContainer) {
+    console.warn(`Dropdown container for rotation index ${rotationIndex} not found.`);
+    return;
+  }
+
+  dropdownContainer.innerHTML = ''; // Clear existing dropdowns in the container
+
+  // Get the dropdowns array for this specific rotation container
+  let dropdowns = rotationSet.data[rotationIndex].data; // Assuming each rotationContainer has its own dropdowns array
+  if (dropdowns.length == 0) {
+    addDropdown(rotationIndex)
+    dropdowns = rotationSet.data[rotationIndex].data;
+    return;
+  }
+
+  dropdowns.forEach((dropdown, dropdownIndex) => {
+    // Create a new div for the dropdown
     const dropdownDiv = document.createElement('div');
-    dropdownDiv.className = 'ability-dropdown';
+    dropdownDiv.classList.add('dropdown-container');
+    dropdownDiv.id = `dropdown-container-${rotationIndex}-${dropdownIndex}`;
 
     //Create the filter input
     const filterInput = document.createElement('input');
@@ -79,7 +275,7 @@ const renderDropdowns = () => {
     };
     filterInput.addEventListener(
       'input',
-      debounce((e : any) => {
+      debounce((e: any) => {
         const filter = (e.target as HTMLInputElement).value.toLowerCase();
         const filteredAbilities = abilities.filter(
           (a: any) =>
@@ -90,36 +286,38 @@ const renderDropdowns = () => {
       }, 300)
     );
 
-    // Create the dropdown select
+
+    // Create the select element
     const selectElement = document.createElement('select');
-    selectElement.className = 'nisdropdown';
-    selectElement.innerHTML = `<option value="">Select an ability</option>`;
-    abilities.forEach((a: Ability) => {
+    selectElement.className = 'nisdropdown ability-dropdown';
+    selectElement.id = `dropdown-${rotationIndex}-${dropdownIndex}`;
+    selectElement.innerHTML = `<option value="">Select an ability</option>`; // Add a default option
+
+    // Populate the dropdown with options
+    abilities.forEach((ability) => {
       const option = document.createElement('option');
-      option.value = a.Emoji;
-      option.textContent = a.Emoji;
+      option.value = ability.Emoji;
+      option.textContent = ability.Emoji;
+      if (ability.Emoji === dropdown.selectedAbility?.Emoji) {
+        option.selected = true;
+      }
       selectElement.appendChild(option);
     });
 
-    // Set the selected value if available
-    if (dropdown.selectedAbility) {
-      selectElement.value = dropdown.selectedAbility.Emoji;
-    }
-
+    // Add event listener for dropdown changes
     selectElement.addEventListener('change', (e) => {
       const selectedAbility = (e.target as HTMLSelectElement).value;
       const ability = abilities.find((a: Ability) => a.Emoji === selectedAbility);
       if (ability != null) {
         //assign the ability to the dropdowns
-        dropdowns[index].selectedAbility = ability;
+        dropdowns[dropdownIndex].selectedAbility = ability;
         //update the image
         abilityImage.src = ability.Src;
         abilityImage.alt = ability.Emoji;
 
-        // Update the overlay
-        renderRotationPreview();
+        // Update the preview
+        renderRotationPreview(rotationIndex);
       }
-
     });
 
     // Create the image for the selected ability
@@ -129,65 +327,61 @@ const renderDropdowns = () => {
       abilityImage.src = dropdown.selectedAbility.Src;
       abilityImage.alt = dropdown.selectedAbility.Emoji;
     }
+
     // Create the button group
     const buttonGroup = document.createElement('div');
     buttonGroup.className = 'button-group';
 
-    // Move Up Button
+    // Add buttons for moving and deleting dropdowns
     const moveUpButton = document.createElement('button');
     moveUpButton.className = 'nisbutton up-button';
     moveUpButton.innerHTML = `<i class="fa-solid fa-chevron-up"></i>`;
-    moveUpButton.disabled = index === 0;
+    moveUpButton.disabled = dropdownIndex === 0;
     moveUpButton.addEventListener('click', () => {
-      if (index > 0) {
-        [dropdowns[index - 1], dropdowns[index]] = [dropdowns[index], dropdowns[index - 1]];
-        renderDropdowns();
-        renderRotationPreview();
+      if (dropdownIndex > 0) {
+        [dropdowns[dropdownIndex - 1], dropdowns[dropdownIndex]] = [dropdowns[dropdownIndex], dropdowns[dropdownIndex - 1]];
+        renderDropdowns(rotationIndex);
+        renderRotationPreview(rotationIndex);
       }
     });
 
-    // Move Down Button
     const moveDownButton = document.createElement('button');
     moveDownButton.className = 'nisbutton down-button';
     moveDownButton.innerHTML = `<i class="fa-solid fa-chevron-down"></i>`;
-    moveDownButton.disabled = index === dropdowns.length - 1;
+    moveDownButton.disabled = dropdownIndex === dropdowns.length - 1;
     moveDownButton.addEventListener('click', () => {
-      if (index < dropdowns.length - 1) {
-        [dropdowns[index], dropdowns[index + 1]] = [dropdowns[index + 1], dropdowns[index]];
-        renderDropdowns();
-        renderRotationPreview();
+      if (dropdownIndex < dropdowns.length - 1) {
+        [dropdowns[dropdownIndex], dropdowns[dropdownIndex + 1]] = [dropdowns[dropdownIndex + 1], dropdowns[dropdownIndex]];
+        renderDropdowns(rotationIndex);
+        renderRotationPreview(rotationIndex);
       }
     });
 
-    // Delete Button
     const deleteButton = document.createElement('button');
+    deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
     deleteButton.className = 'nisbutton delete-button';
-    deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`;
     deleteButton.addEventListener('click', () => {
-      dropdowns.splice(index, 1);
-      renderDropdowns();
-      renderRotationPreview();
+      dropdowns.splice(dropdownIndex, 1);
+      renderDropdowns(rotationIndex);
     });
 
-
-    // Append buttons to the button group
+    // Add buttons to the buttonGroup div
     buttonGroup.appendChild(moveUpButton);
     buttonGroup.appendChild(moveDownButton);
     buttonGroup.appendChild(deleteButton);
 
-    // Append all elements to the dropdown container
+
+    // Add the select element to the dropdown div
     dropdownDiv.appendChild(filterInput);
     dropdownDiv.appendChild(selectElement);
     dropdownDiv.appendChild(abilityImage);
     dropdownDiv.appendChild(buttonGroup);
 
-    // Append the dropdown container to the main container
-    fragment.appendChild(dropdownDiv);
+    // Add the dropdown div to the container
+    dropdownContainer.appendChild(dropdownDiv);
   });
-
-  dropdownContainer.innerHTML = ''; // Clear existing dropdowns
-  dropdownContainer.appendChild(fragment);
 };
+
 
 const updateDropdownOptions = (selectElement: HTMLSelectElement, abilities: Ability[]) => {
   selectElement.innerHTML = `<option value="">Select an ability</option>`;
@@ -234,30 +428,23 @@ const populateSavedRotations = () => {
 
 
 // Save rotation
-const saveRotation = (rotationName: string, rotationData: any) => {
-  const existingIndex = savedRotationsCache.findIndex(
-    (rotation) => rotation.name === rotationName
-  );
+const saveRotationSet = (rotationSet: RotationSet) => {
+  // Retrieve existing saved rotations from localStorage
+  const cachedRotations = localStorage.getItem('savedRotations');
+  const savedRotations: RotationSet[] = cachedRotations ? JSON.parse(cachedRotations) : [];
 
+  // Check if a RotationSet with the same name already exists
+  const existingIndex = savedRotations.findIndex((r) => r.name === rotationSet.name);
   if (existingIndex !== -1) {
-    savedRotationsCache[existingIndex] = { name: rotationName, data: rotationData };
+    // Update the existing RotationSet
+    savedRotations[existingIndex] = rotationSet;
   } else {
-    savedRotationsCache.push({ name: rotationName, data: rotationData });
+    // Add the new RotationSet
+    savedRotations.push(rotationSet);
   }
 
-  localStorage.setItem('savedRotations', JSON.stringify(savedRotationsCache));
-
-  // Refresh the dropdown
-  populateSavedRotations();
-
-  // set the selected rotation to the one you just saved
-  const rotationDropdown = getById('savedRotations') as HTMLSelectElement;
-  if (rotationDropdown) {
-    const option = Array.from(rotationDropdown.options).find((opt) => opt.value === rotationName);
-    if (option) {
-      rotationDropdown.value = rotationName;
-    }
-  }
+  // Save the updated list back to localStorage
+  localStorage.setItem('savedRotations', JSON.stringify(savedRotations));
 };
 
 const handleSaveRotation = () => {
@@ -266,42 +453,80 @@ const handleSaveRotation = () => {
       const rotationNameInput = getById('rotation-name') as HTMLInputElement;
       if (rotationNameInput?.value?.trim()) {
         rotationName = rotationNameInput.value.trim();
-      }
-      else {
+      } else {
         console.error("Please enter a valid rotation name.");
         return;
       }
-    }
-    catch (e) {
-      console.error(`An error occured setting the rotation name. ${e}`);
+    } catch (e) {
+      console.error(`An error occurred setting the rotation name. ${e}`);
       return;
     }
   }
 
-  const rotationData = dropdowns.map((dropdown) => dropdown.selectedAbility); // Add any other data you want to save
-  saveRotation(rotationName, rotationData);
-  console.log("Rotation saved successfully!");
+  // Create a new RotationSet with the current rotation data
+  const newRotationSet: RotationSet = {
+    name: rotationName,
+    data: rotationSet.data.map((rotation) => ({
+      ...rotation,
+      data: rotation.data.map((dropdown) => ({
+        selectedAbility: dropdown.selectedAbility,
+      })),
+    })),
+    selectedIndex: 0
+  };
+
+  saveRotationSet(newRotationSet);
+  console.log("RotationSet saved successfully!");
 };
 // Expose function to the global scope so it can be called from HTML
 getById('saveButton')?.addEventListener('click', handleSaveRotation);
 
 const handleExportRotation = () => {
-  console.log("Exporting Rotation");
-  const rotationData = dropdowns.map((dropdown) => dropdown.selectedAbility);
-  const dataStr = JSON.stringify(rotationData, null, 2);
-  const blob = new Blob([dataStr], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  if (!rotationName.trim()) {
+    try {
+      const rotationNameInput = getById('rotation-name') as HTMLInputElement;
+      if (rotationNameInput?.value?.trim()) {
+        rotationName = rotationNameInput.value.trim();
+      } else {
+        console.error("Please enter a valid rotation name.");
+        return;
+      }
+    } catch (e) {
+      console.error(`An error occurred setting the rotation name. ${e}`);
+      return;
+    }
+  }
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${rotationName.trim() ?? 'Untitled Rotation'}.json`;
-  link.click();
+  // Create a RotationSet object for export
+  const rotationSetForExport: RotationSet = {
+    name: rotationName,
+    data: rotationSet.data.map((rotation) => ({
+      ...rotation,
+      dropdowns: rotation.data.map((dropdown) => ({
+        selectedAbility: dropdown.selectedAbility,
+      })),
+    })),
+    selectedIndex: 0
+  };
+
+  // Convert the RotationSet to a JSON string
+  const rotationSetJson = JSON.stringify(rotationSetForExport, null, 2);
+
+  // Create a Blob and trigger a download
+  const blob = new Blob([rotationSetJson], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${rotationName.replace(/\s+/g, '_')}_RotationSet.json`;
+  a.click();
   URL.revokeObjectURL(url);
-}
+
+  console.log("RotationSet exported successfully!");
+};
 getById('exportButton')?.addEventListener('click', handleExportRotation);
 
 const handleImportRotation = () => {
-  console.log("Importing Rotation")
+  console.log("Importing Rotation");
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
@@ -322,50 +547,77 @@ const handleImportRotation = () => {
         try {
           let parsedData = JSON.parse(contents);
 
-          // Check if the parsed data is in the old format
-          if (
-            Array.isArray(parsedData) &&
-            parsedData.length > 0 &&
-            parsedData[0].hasOwnProperty("selectedAbility")
-          ) {
-            // Old format
-            let rotationData = parsedData.map((item: any) => item.selectedAbility);
+          if (Array.isArray(parsedData)) {
+            // Handle old format (array of dropdowns or abilities)
+            if (
+              parsedData.length > 0 &&
+              parsedData[0].hasOwnProperty("selectedAbility")
+            ) {
+              console.log("Detected old format (array of dropdowns).");
 
-            // Map old data to full ability details
-            rotationData = rotationData
-              .map((item: any) => {
-                const ability = abilities.find((a: Ability) => a.Emoji === item.Emoji);
-                return ability ? { ...ability } : null;
-              })
-              .filter((item: any) => item !== null);
+              // Map old data to full ability details
+              const data = parsedData
+                .map((item: any) => {
+                  const ability = abilities.find(
+                    (a: Ability) => a.Emoji === item.selectedAbility?.Emoji
+                  );
+                  return ability ? { selectedAbility: ability } as Dropdown : null;
+                })
+                .filter((item: any) => item !== null);
+              if (parsedData) {
+                const rotationData: Dropdown[] = parsedData
 
-            // Map rotationData to dropdowns
-            rotationData = rotationData.map((ability: Ability) => ({ selectedAbility: ability }));
+                  // Update the current rotation set with the imported dropdowns
+                  rotationSet = {
+                    name: file.name,
+                    data: [
+                      {
+                        id: 0,
+                        name: file.name,
+                        data: rotationData,
+                      },
+                    ],
+                    selectedIndex: 0
+                  };
+              }
+              
+            } else {
+              console.error("Invalid old format.");
+              alert("Invalid JSON file.");
+              return;
+            }
+          } else if (parsedData && parsedData.hasOwnProperty("name") && parsedData.hasOwnProperty("data")) {
+            // Handle new format (RotationSet)
+            console.log("Detected new format (RotationSet).");
 
-            dropdowns.splice(0, dropdowns.length, ...rotationData);
+            // Update ability info from abilities.json in case images have changed
+            parsedData.data = parsedData.data.map((rotation: Rotation) => ({
+              ...rotation,
+              data: rotation.data.map((dropdown: Dropdown) => {
+                const ability = abilities.find(
+                  (a: Ability) => a.Emoji === dropdown.selectedAbility?.Emoji
+                );
+                return {
+                  selectedAbility: ability ? { ...ability } : null,
+                };
+              }),
+            }));
+
+            // Assign the parsed RotationSet to the current rotationSet
+            rotationSet = parsedData as RotationSet;
           } else {
-            // New format
-            // update ability info from abilities.json incase images have changed
-            parsedData = parsedData.map((item: any) => {
-              const ability = abilities.find((a: Ability) => a.Emoji === item.Emoji);
-              return ability ? { ...ability } : null;
-            }).filter((item: any) => item !== null);
-
-            // the parsed data must be an array of dropdowns
-            const parsedAbilities = parsedData.map((ability: Ability) => ({ selectedAbility: ability }));
-            
-            dropdowns.splice(0, dropdowns.length, ...parsedAbilities);
+            console.error("Invalid format.");
+            alert("Invalid JSON file.");
+            return;
           }
 
-          renderDropdowns();
-
+          // Render the imported rotation set
+          renderRotationContainers();
         } catch (error) {
           console.error("Error parsing JSON:", error);
           alert("Invalid JSON file.");
         }
       }
-      // Update the overlay
-      renderRotationPreview();
     };
 
     // Read the file as text
@@ -375,55 +627,59 @@ const handleImportRotation = () => {
   // Trigger the file input dialog
   fileInput.click();
 };
+
 getById('importButton')?.addEventListener('click', handleImportRotation);
 
-const handleSwitchRotation = (rotationName: string) => {
-  // Retrieve the saved rotations from localStorage
-  const cachedRotations = localStorage.getItem("savedRotations");
-  const savedRotations = cachedRotations ? JSON.parse(cachedRotations) : [];
+const handleSwitchRotation = (rotationSetName: string) => {
+  console.log(`Switching to RotationSet: ${rotationSetName}`);
 
+  // Retrieve saved rotations from localStorage
+  const cachedRotations = localStorage.getItem('savedRotations');
+  const savedRotations: RotationSet[] = cachedRotations ? JSON.parse(cachedRotations) : [];
 
-  const selectedRotation = savedRotations.find(
-    (rotation: Rotation) => rotation.name === rotationName
+  // Find the RotationSet by name
+  const selectedRotationSet = savedRotations.find(
+    (rotationSet) => rotationSet.name === rotationSetName
   );
 
-  if (!selectedRotation) {
-    alert('Rotation not found.');
+  if (!selectedRotationSet) {
+    console.error(`RotationSet with name "${rotationSetName}" not found.`);
+    alert(`RotationSet "${rotationSetName}" does not exist.`);
     return;
   }
 
-  // change the rotation name input to the selected rotation name
-  const rotationNameInput = getById('rotation-name') as HTMLInputElement;
-  if (rotationNameInput) {
-    rotationNameInput.value = selectedRotation.name;
-  }
-
-  // Clear the current dropdowns
-  dropdowns.splice(0, dropdowns.length);
-
-  // Populate dropdowns with the saved rotation data
-  const rotationData = Array.isArray(selectedRotation.data) ? selectedRotation.data : [selectedRotation.data];
-
-  rotationData.forEach((ability : Ability) => {
-    dropdowns.push({ selectedAbility: ability });
-  });
-
-  // Re-render the dropdowns
-  renderDropdowns();
-
-  // Update the overlay
-  renderRotationPreview();
+  // Render the new rotation set
+  renderRotationContainers();
+  console.log(`Switched to RotationSet: ${rotationSetName}`);
 };
 getById('savedRotations')?.addEventListener('change', (e) => {
   const selectedRotation = (e.target as HTMLSelectElement).value;
   handleSwitchRotation(selectedRotation);
 });
 
-const addDropdown = () => {
-  dropdowns.push({ selectedAbility: null });
-  renderDropdowns();
+const addDropdown = (rotationIndex: number) => {
+  // Get the specific rotation from the rotation set
+  const rotation = rotationSet.data[rotationIndex];
+  if (!rotation) {
+    console.error(`Rotation at index ${rotationIndex} not found.`);
+    return;
+  }
+
+  // Create a new dropdown object
+  const newDropdown: Dropdown = {
+    selectedAbility: null, // Initialize with no selected ability
+  };
+  // Push the new dropdown to the rotation's data array
+  rotation.data.push(newDropdown);
+
+  renderDropdowns(rotationIndex);
 }
-getById('addActionButton')?.addEventListener('click', addDropdown);
+
+// Add event listeners for the "Add Dropdown" button for each rotation
+const addDropdownButtons = document.querySelectorAll('.addDropdownButton');
+addDropdownButtons.forEach((button, index) => {
+  button.addEventListener('click', () => addDropdown(index));
+});
 
 
 // Delete rotation
@@ -442,88 +698,115 @@ const deleteRotation = () => {
 
     populateSavedRotations();
     alert('Rotation deleted successfully!');
-    clearDropdowns();
+    rotationSet.data.forEach((rotation) => {
+      clearDropdowns(rotation.id);
+    });
   }
 };
 getById('deleteRotButton')?.addEventListener('click', deleteRotation);
 
 // Clear all dropdowns
-const clearDropdowns = () => {
-  console.log("clearing dropdowns " + dropdowns.length);
-  dropdowns.splice(0, dropdowns.length); // Clear the array by removing all elements
-  renderDropdowns();
-  renderRotationPreview();
-};
-getById('clearButton')?.addEventListener('click', clearDropdowns);
-
-// Function to update the overlay div
-const renderRotationPreview = () => {
-  const overlay = getById('rotation-preview');
-  const toggle = getById('toggleDetailsButton');
-  if (!overlay || !toggle) return;
-
-  // Get the number of images per row from settings
-  const numImagesPerRow = sauce.getSetting('ablitiesPerRow');
-
-  // Filter dropdowns with selected abilities and map them to image elements
-  const selectedAbilities = dropdowns.filter((dropdown) => dropdown.selectedAbility);
-  const rowspacer = '<span class="row-spacer" > > </span>'
-
-  // Group the images into rows
-  const rows: string[] = [];
-  for (let i = 0; i < selectedAbilities.length; i += numImagesPerRow) {
-    const rowImages = selectedAbilities
-      .slice(i, i + numImagesPerRow)
-      .map(
-        (dropdown) =>
-          `<img src="${dropdown.selectedAbility!.Src}" alt="${dropdown.selectedAbility!.Emoji}" class="rotation-preview-image" />`
-      )
-      .join(rowspacer);
-    // Add ' > ' before rows that are not the first row
-    const rowPrefix = i === 0 ? '' : rowspacer;
-    rows.push(`<div class="rotation-row">${rowPrefix}${rowImages}</div>`);
-  }
-
-  // If no images are selected, clear the overlay and hide it
-  if (rows.length === 0) {
-    overlay.innerHTML = '';
-    overlay.style.visibility = 'hidden';
-    toggle.style.visibility = 'hidden';
+const clearDropdowns = (rotationIndex: number) => {
+  // Get the specific rotation from the rotation set
+  const rotation = rotationSet.data[rotationIndex];
+  if (!rotation) {
+    console.error(`Rotation at index ${rotationIndex} not found.`);
     return;
   }
 
-  // Update the overlay's innerHTML with the rows
-  overlay.innerHTML = rows.join('');
-  overlay.style.visibility = 'visible';
-  toggle.style.visibility = 'visible';
+  // Clear the dropdowns array for the specific rotation
+  rotation.data = [];
+
+  // Re-render the dropdowns for this specific rotation
+  renderDropdowns(rotationIndex);
+  renderRotationPreview(rotationIndex);
+};
+const clearButtons = document.querySelectorAll('.clearButton');
+clearButtons.forEach((button, index) => {
+  button.addEventListener('click', () => clearDropdowns(index));
+});
+
+// Function to update the overlay div
+const renderRotationPreview = (rotationIndex: number) => {
+  // Get the specific rotation from the rotation set
+  const rotation = rotationSet.data[rotationIndex];
+  if (!rotation) {
+    console.error(`Rotation at index ${rotationIndex} not found.`);
+    return;
+  }
+
+  const previewContainer = getById(`dropdown-preview-${rotationIndex}`);
+  if (!previewContainer) {
+    console.error(`Preview container for rotation index ${rotationIndex} not found.`);
+    return;
+  }
+
+  // Clear the existing preview content
+  previewContainer.innerHTML = '';
+
+  const numImagesPerRow = sauce.getSetting('ablitiesPerRow') || 8;
+  const rowSpacer = '<span class="row-spacer"> > </span>';
+
+  // Generate the preview content based on the dropdowns in the rotation
+  let currentRow: HTMLDivElement | null = null;
+  rotation.data.forEach((dropdown, dropdownIndex) => {
+    if (dropdownIndex % numImagesPerRow === 0) {
+      if (currentRow) {
+        // Add a row spacer at the start of the new row (except the first)
+        currentRow.innerHTML += rowSpacer;
+      }
+      currentRow = document.createElement('div');
+      currentRow.className = 'preview-row';
+      previewContainer.appendChild(currentRow);
+    }
+
+    // Add a row spacer between ability images (except the first in the row)
+    if (dropdownIndex % numImagesPerRow !== 0) {
+      currentRow!.innerHTML += rowSpacer;
+    }
+
+    // Create the ability preview element
+    const abilityElement = document.createElement('div');
+    abilityElement.className = 'ability-preview';
+
+    if (dropdown.selectedAbility) {
+      abilityElement.innerHTML = `<img src="${dropdown.selectedAbility.Src}" alt="${dropdown.selectedAbility.Title}" title="${dropdown.selectedAbility.Title}" class="ability-image">`;
+    } else {
+      abilityElement.textContent = `No ability selected`;
+      abilityElement.classList.add('empty');
+    }
+
+    // Append the ability element to the current row
+    currentRow?.appendChild(abilityElement);
+  });
+
+  const detailsContainer = getById(`rotation-details-${rotationIndex}`);
+  if (!detailsContainer) {
+    console.error(`Details container for rotation index ${rotationIndex} not found.`);
+    return;
+  }
+
+  const toggleDetailsButton = document.createElement('button');
+  toggleDetailsButton.className = 'toggleDetailsButton';
+  toggleDetailsButton.innerHTML = detailsContainer.style.display === 'none' ? '<i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-solid fa-chevron-down"></i>';
+
+  // Add event listener to toggle the visibility of the details container
+  toggleDetailsButton.addEventListener('click', () => {
+    if (detailsContainer.style.display === 'none') {
+      detailsContainer.style.display = 'block';
+      toggleDetailsButton.textContent = '<i class="fa-solid fa-chevron-down"></i>';
+    } else {
+      detailsContainer.style.display = 'none';
+      toggleDetailsButton.textContent = '<i class="fa-solid fa-chevron-up"></i>';
+    }
+  });
 };
 // Add a listener for changes to #abilitiesPerRow
 getById('abilitiesPerRow')?.addEventListener('input', () => {
-  renderRotationPreview();
+  rotationSet.data.forEach((rotation) => {
+    renderRotationPreview(rotation.id);
+  });
 });
-
-let detailsAreHidden = false;
-const handleToggleDetails = () => {
-  const toggleDetailsButton = getById('toggleDetailsButton') as HTMLElement;
-  const detailsContainer = getById('rotation-details') as HTMLElement;
-
-  if (!toggleDetailsButton || !detailsContainer) {
-    console.error('one or more elements failed to load')
-    return;
-  };
-
-  if (detailsAreHidden) {
-    detailsContainer.style.display = 'block';
-    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
-  } 
-  else {
-    detailsContainer.style.display = 'none';
-    toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
-  }
-
-  detailsAreHidden = !detailsAreHidden;
-}
-getById('toggleDetailsButton')?.addEventListener('click', handleToggleDetails);
 
 let config = {
   appName: 'rotationMaster',
@@ -774,8 +1057,7 @@ let helperItems = {
 function startRotationMaster() {
   loadSavedRotations();
   populateSavedRotations();
-  renderDropdowns();
-  renderRotationPreview();
+  addRotationContainer();
 
   if (!window.alt1) {
     helperItems.Output?.insertAdjacentHTML(
@@ -813,12 +1095,18 @@ async function startOverlay(element: HTMLElement) {
   let overlayPosition;
 
   const updateOverlay = async () => {
+    const selectedRotation = rotationSet.data[rotationSet.selectedIndex ?? 0];
+    if (!selectedRotation) {
+      console.error('No rotation is selected.');
+      return;
+    }
+
     const uiScale = sauce.getSetting('uiScale');
     const abilitiesPerRow = sauce.getSetting('ablitiesPerRow');
     overlayPosition = currentOverlayPosition;
 
     try {
-      const totalTrackedItems = dropdowns.filter((dropdown) => dropdown.selectedAbility).length;
+      const totalTrackedItems = selectedRotation.data.filter((dropdown) => dropdown.selectedAbility).length;
       const dataUrl = await htmlToImage.toCanvas(overlay, {
         backgroundColor: 'transparent',
         skipFonts: true,
@@ -859,7 +1147,7 @@ async function startOverlay(element: HTMLElement) {
 
     //Schedule the next update
     setTimeout(() => requestAnimationFrame(updateOverlay), refreshRate);
-  };
+  }
 
   // Start the first update
   requestAnimationFrame(updateOverlay);
@@ -885,6 +1173,7 @@ const App = () => {
     startRotationMaster();
   }
 };
+
 
 // Start the app
 App();

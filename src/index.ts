@@ -262,13 +262,25 @@ const saveRotation = (rotationName: string, rotationData: any) => {
 
 const handleSaveRotation = () => {
   if (!rotationName.trim()) {
-    alert("Please enter a valid rotation name.");
-    return;
+    try {
+      const rotationNameInput = getById('rotation-name') as HTMLInputElement;
+      if (rotationNameInput?.value?.trim()) {
+        rotationName = rotationNameInput.value.trim();
+      }
+      else {
+        console.error("Please enter a valid rotation name.");
+        return;
+      }
+    }
+    catch (e) {
+      console.error(`An error occured setting the rotation name. ${e}`);
+      return;
+    }
   }
 
   const rotationData = dropdowns.map((dropdown) => dropdown.selectedAbility); // Add any other data you want to save
   saveRotation(rotationName, rotationData);
-  alert("Rotation saved successfully!");
+  console.log("Rotation saved successfully!");
 };
 // Expose function to the global scope so it can be called from HTML
 getById('saveButton')?.addEventListener('click', handleSaveRotation);
@@ -578,7 +590,7 @@ function updateLocation(e : any) {
   );
 }
 
-const currentVersion = '2.0.1';
+const currentVersion = '2.1.0';
 const settingsObject = {
   settingsHeader: sauce.createHeading(
     'h2',
@@ -615,6 +627,71 @@ const settingsObject = {
   ),
 }
 
+async function fetchPatchNotes(): Promise<any> {
+  const response = await fetch("./patchnotes.json");
+  return response.json();
+}
+
+// Function to check the version and display patch notes
+async function checkAndShowPatchNotes(currentVersion: string) {
+  const lastKnownVersion = sauce.getSetting('lastKnownVersion') || '1.0.0'; // Default to an initial version if not set'
+  
+  if (lastKnownVersion == currentVersion) {
+    return;
+  }
+
+  const patchNotes = await fetchPatchNotes();
+
+
+  // Filter patches for versions newer than the last known version
+  const newPatches = patchNotes.patches.filter(
+    (patch: any) => !lastKnownVersion || patch.version > lastKnownVersion
+  );
+
+  // Display patch notes
+  if (newPatches.length > 0) {
+    console.log('New Patch Notes:');
+    newPatches.forEach((patch: any) => {
+      console.log(`Version: ${patch.version}`);
+      console.log(`Description: ${patch.description}`);
+      console.log('Changes:');
+      patch.changes.forEach((change: string) => console.log(`- ${change}`));
+    });
+
+    const patchNotesContainer = getById('patch-notes-container');
+    const patchNotesContent = getById('patch-notes-content');
+    if (patchNotesContainer && patchNotesContent) {
+      // Populate the patch notes content
+      patchNotesContent.innerHTML = newPatches
+        .map(
+          (patch: any) => `
+              <h2>Version: ${patch.version}</h2>
+              <p>${patch.description}</p>
+              <ul>
+                ${patch.changes.map((change: string) => `<li>${change}</li>`).join('')}
+              </ul>
+            `
+        )
+        .join('<hr style="margin: 20px 0, border: 1px solid #ccc" />');
+
+      // Show the patch notes container
+      patchNotesContainer.style.display = 'block';
+
+      // Add event listener to close button
+      const closeButton = getById('close-patch-notes');
+      closeButton?.addEventListener('click', () => {
+        patchNotesContainer.style.display = 'none';
+      });
+    }
+  }
+
+  // Update the last known version in localStorage
+  sauce.updateSetting('lastKnownVersion', currentVersion);
+  const newVersion = sauce.getSetting('lastKnownVersion');
+  console.log(`Updated last known version to: ${newVersion}`);
+
+}
+
 let helperItems = {
   Output: getById('output'),
   RotationMaster: getById('RotationMaster'),
@@ -648,6 +725,8 @@ function startRotationMaster() {
     );
     return;
   }
+
+  checkAndShowPatchNotes(currentVersion);
 
   const trackedRegion = getById('rotation-preview');
   if (trackedRegion)

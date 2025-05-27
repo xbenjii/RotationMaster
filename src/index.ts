@@ -527,6 +527,7 @@ function initSettings() {
         overlayPosition: { x: 100, y: 100 },
         uiScale: 100,
         updatingOverlayPosition: false,
+        lastKnownVersion: '1.0.0' // Initial version
       })
     )
   }
@@ -577,7 +578,7 @@ function updateLocation(e : any) {
   );
 }
 
-const currentVersion = '2.0.0';
+const currentVersion = '2.0.1';
 const settingsObject = {
   settingsHeader: sauce.createHeading(
     'h2',

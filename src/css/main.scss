@@ -29,12 +29,32 @@ html, body {
   color: #F1F1F1;
 }
 
+.mainHeader {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  height: 100%; /* Ensure it takes up the full height of the parent */
+}
+
+
 #Settings {
   display: flex; /* Use Flexbox for centering */
   flex-direction: column; /* Optional: Stack children vertically */
   justify-content: center; /* Center vertically */
   align-items: center; /* Center horizontally */
   padding: 1rem; /* Add some padding */
+}
+
+#Title {
+    color: #ffcb05;
+    text-shadow: 1px 1px #000000;
+}
+
+#rotationNameLabel {
+  font-family: sans-serif;
+  font-size: 14px;
+  color: #94afbd;
+  text-shadow: 1px 1px #000000;
 }
 
 #Settings a {

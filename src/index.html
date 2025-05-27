@@ -14,12 +14,16 @@
       <!-- Rotations -->
       <div id="RotationMaster">
         <div id="rotation" class="rotation">
-          <img src="<%= require('./asset/resource/fox.webp') %>" alt="Fox" class="fox-image" id="fox-image">
-          <h1>Welcome to the Rotations Master</h1>
+          <div class="mainHeader">
+            <img src="./icon.png" alt="Fox" class="fox-image" id="fox-image">
+            <h1 id="Title">ROTATION MASTER</h1>
+            <img src="./icon.png" alt="Fox" class="fox-image" id="fox-image">
+          </div>
 
           <!--{/* Rotation Name Input */}-->
+
           <div style="margin-bottom: 10px;">
-            <label htmlFor="rotation-name" style="margin-right: 10px">
+            <label id="rotationNameLabel" htmlFor="rotation-name" style="margin-right: 10px">
               Rotation Name:
             </label>
             <input class="nisinput"

@@ -547,6 +547,125 @@ const handleExportRotation = () => {
 };
 getById('exportButton')?.addEventListener('click', handleExportRotation);
 
+function isListOfAbilities(parsedData: any): boolean {
+  return (
+    typeof parsedData === "object" &&
+    parsedData !== null &&
+    typeof parsedData.name === "string" &&
+    Array.isArray(parsedData.data) &&
+    parsedData.data.length > 0 &&
+    typeof parsedData.data[0] === "object" &&
+    // Check for Ability or Dropdown shape
+    (
+      // Ability: has Title, Emoji, EmojiId, Category, Src
+      (
+        "Title" in parsedData.data[0] &&
+        "Emoji" in parsedData.data[0] &&
+        "EmojiId" in parsedData.data[0] &&
+        "Category" in parsedData.data[0] &&
+        "Src" in parsedData.data[0]
+      ) ||
+      // Dropdown: has selectedAbility
+      ("selectedAbility" in parsedData.data[0])
+    )
+  );
+}
+
+function isRotationSetWithRotationsFormat(obj: any): boolean {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    typeof obj.name === "string" &&
+    Array.isArray(obj.data) &&
+    obj.data.every(
+      (rotation: any) =>
+        typeof rotation === "object" &&
+        typeof rotation.id === "number" &&
+        typeof rotation.name === "string" &&
+        Array.isArray(rotation.data) &&
+        rotation.data.every(
+          (dropdown: any) =>
+            typeof dropdown === "object" &&
+            dropdown.selectedAbility &&
+            typeof dropdown.selectedAbility.Title === "string" &&
+            typeof dropdown.selectedAbility.Src === "string" &&
+            typeof dropdown.selectedAbility.Emoji === "string" &&
+            typeof dropdown.selectedAbility.EmojiId === "string" &&
+            typeof dropdown.selectedAbility.Category === "string"
+        )
+    )
+  );
+}
+
+const HandleOldFormat = (parsedData: any, rotationName: string) => {
+  if (isRotationSetWithRotationsFormat(parsedData)) {
+    rotationSet = parsedData;
+    return;
+  }
+
+  if (isListOfAbilities(parsedData)) {
+    rotationSet = {
+      name: parsedData.name,
+      data: [
+        {
+          id: 0, // or any unique identifier
+          name: parsedData.Name,
+          data: parsedData.data.map((ability: Ability) => ({
+            selectedAbility: { ...ability }
+          }))
+        }
+      ]
+    };
+
+    return;
+  }
+  
+  if (Array.isArray(parsedData)) {
+    // Handle old format (array of dropdowns or abilities)
+    if (
+      parsedData.length > 0 &&
+      parsedData[0].hasOwnProperty("selectedAbility")
+    ) {
+      console.log("Detected old format (array of dropdowns).");
+
+      // Map old data to full ability details
+      const data = parsedData
+        .map((item: any) => {
+          const ability = abilities.find(
+            (a: Ability) => a.Emoji === item.selectedAbility?.Emoji
+          );
+          return ability ? { selectedAbility: ability } as Dropdown : null;
+        })
+        .filter((item: any) => item !== null);
+
+      if (data) {
+        const rotationData: Dropdown[] = data as Dropdown[];
+
+        // Update the current rotation set with the imported dropdowns
+        rotationSet = {
+          name: rotationName,
+          data: [
+            {
+              id: 0,
+              name: rotationName,
+              data: rotationData,
+            },
+          ]
+        };
+      }
+
+    } else {
+      console.error("Invalid old format.");
+      alert("Invalid JSON file.");
+      return;
+    }
+  } else {
+    console.error("Invalid format.");
+    alert("Invalid JSON file.");
+    return;
+  }
+}
+
 const handleImportRotation = () => {
   console.log("Importing Rotation");
 
@@ -571,69 +690,7 @@ const handleImportRotation = () => {
           
           selectedIndex = 0; // Reset selected index to 0 when switching rotations
 
-          if (Array.isArray(parsedData)) {
-            // Handle old format (array of dropdowns or abilities)
-            if (
-              parsedData.length > 0 &&
-              parsedData[0].hasOwnProperty("selectedAbility")
-            ) {
-              console.log("Detected old format (array of dropdowns).");
-
-              // Map old data to full ability details
-              const data = parsedData
-                .map((item: any) => {
-                  const ability = abilities.find(
-                    (a: Ability) => a.Emoji === item.selectedAbility?.Emoji
-                  );
-                  return ability ? { selectedAbility: ability } as Dropdown : null;
-                })
-                .filter((item: any) => item !== null);
-
-              if (data) {
-                const rotationData: Dropdown[] = data as Dropdown[];
-
-                  // Update the current rotation set with the imported dropdowns
-                  rotationSet = {
-                    name: file.name,
-                    data: [
-                      {
-                        id: 0,
-                        name: file.name,
-                        data: rotationData,
-                      },
-                    ]
-                  };
-              }
-              
-            } else {
-              console.error("Invalid old format.");
-              alert("Invalid JSON file.");
-              return;
-            }
-          } else if (parsedData && parsedData.hasOwnProperty("name") && parsedData.hasOwnProperty("data")) {
-            // Handle new format (RotationSet)
-            console.log("Detected new format (RotationSet).");
-
-            // Update ability info from abilities.json in case images have changed
-            parsedData.data = parsedData.data.map((rotation: Rotation) => ({
-              ...rotation,
-              data: rotation.data.map((dropdown: Dropdown) => {
-                const ability = abilities.find(
-                  (a: Ability) => a.Emoji === dropdown.selectedAbility?.Emoji
-                );
-                return {
-                  selectedAbility: ability ? { ...ability } : null,
-                };
-              }),
-            }));
-
-            // Assign the parsed RotationSet to the current rotationSet
-            rotationSet = parsedData as RotationSet;
-          } else {
-            console.error("Invalid format.");
-            alert("Invalid JSON file.");
-            return;
-          }
+          HandleOldFormat(parsedData, file.name.replace(".json", ""));
 
           // Render the imported rotation set
           renderRotationContainers();
@@ -681,8 +738,8 @@ const handleSwitchRotation = (rotationSetName: string) => {
     return;
   }
 
-  // Render the new rotation set
-  rotationSet = selectedRotationSet;
+  HandleOldFormat(selectedRotationSet, rotationSetName);
+
   renderRotationContainers();
 
   // sed the rotation name to the selected rotation name
@@ -940,7 +997,7 @@ function updateLocation(e : any) {
   );
 }
 
-const currentVersion = '2.2.0';
+const currentVersion = '2.2.1';
 const settingsObject = {
   settingsHeader: sauce.createHeading(
     'h2',

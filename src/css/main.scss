@@ -39,6 +39,17 @@ html, body {
   overflow-x: auto; /* Add horizontal scrolling for content */
 }
 
+#close-patch-notes {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  cursor: pointer;
+  z-index: 1;
+  padding: 0;
+  line-height: 1;
+  width: 110px;
+}
+
 #RotationMaster {
   width: 100%;
   text-align: center;
@@ -357,7 +368,52 @@ a.subtle-link:hover {
   color: #f1f1f1;
 }
 
-#dropdown-preview {
+#rotationContainers {
+  width: 100%; /* Make the container span the full width of the window */
+  margin: 0; /* Remove all margins */
+  padding: 0; /* Remove any padding */
+}
+
+.rotationContainer {
+  width: 95%;
+  margin: 0;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #1c2c34;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: flex; /* Enables flexbox for the container */
+  flex-direction: column; /* Stacks children vertically */
+
+  .rotation-label-container {
+    align-self: flex-start;
+    margin: 0;
+    padding: 10px;
+  }
+
+  .rotation-controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+
+    .nisbutton {
+      width: auto; /* Button width adjusts to its content */
+      display: inline-flex; /* Ensures proper alignment of content */
+      justify-content: center; /* Centers the content horizontally */
+      align-items: center; /* Centers the content vertically */
+      text-align: center; /* Centers text or symbols */
+    }
+  }
+}
+
+.dropdown-container{
+  display: flex; /* Use Flexbox for layout */
+  align-items: center; /* Center items horizontally */
+  width: 100%; /* Full width of the parent */
+  box-sizing: border-box; /* Include padding in width calculations */
+}
+
+.dropdown-preview {
   display: flex;
   align-items: center; /* Vertically align items */
   justify-content: center; /* Center items horizontally */

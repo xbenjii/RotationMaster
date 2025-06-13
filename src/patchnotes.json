@@ -67,7 +67,7 @@
       "version": "2.2.1",
       "description": "Fixed a bug with switching to old rotations",
       "changes": [
-        "Added functionality to enable users to switch to an older rotation set, which was saved in the old data format.",
+        "Added functionality to enable users to switch to an older rotation set, which was saved in the old data format."
       ]
     }
   ]

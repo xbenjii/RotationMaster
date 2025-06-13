@@ -56,11 +56,11 @@ function getById(id: string): HTMLElement | null {
 
 // Define variables
 let rotationName = '';
+let selectedIndex = 0
 
 type RotationSet = {
   name: string; // Name of the rotation set
   data: Rotation[]; // Array of Rotation objects
-  selectedIndex: number //tracks the selected Rotation
 };
 type Rotation = {
   id: number
@@ -104,11 +104,11 @@ const renderRotationContainers = () => {
     radioButton.type = 'radio';
     radioButton.name = 'rotationSelector'; // Group all radio buttons
     radioButton.id = `rotationRadio-${rotation.id}`;
-    radioButton.checked = rotationSet.selectedIndex === index; // Check if this is the selected rotation
+    radioButton.checked = selectedIndex === index; // Check if this is the selected rotation
 
     // Update the selectedIndex when the radio button is clicked
     radioButton.addEventListener('change', () => {
-      rotationSet.selectedIndex = index;
+      selectedIndex = index;
       console.log(`Selected rotation: ${rotation.name}`);
     });
 
@@ -196,9 +196,13 @@ const renderRotationContainers = () => {
     deleteButton.classList.add('nisbutton');
     deleteButton.innerHTML = '<i class="fas fa-trash-alt" > </i>';
     deleteButton.onclick = () => {
+      
       if (rotationSet.data.length > 1) {
+        if (selectedIndex === index) {
+          selectedIndex = 0;
+        }
         rotationSet.data.splice(index, 1);
-        renderRotationContainers();
+        hideAllButIndex(0)
       }
     };
 
@@ -219,6 +223,22 @@ const renderRotationContainers = () => {
   });
 };
 
+const hideAllButIndex = (id: Number) => {
+  renderRotationContainers();
+  //hide details for all but new rotation
+  const dropdownContainer = document.querySelectorAll('.dropdowns-container') as NodeListOf<HTMLElement>;
+  dropdownContainer.forEach((container) => {
+    if (container.id !== `dropdowns-container-${id}`) {
+      const id = container.id.split('-')[2]; // Extract the rotation id from the container id')
+      const detailsContainer = document.getElementById(`rotation-details-${id}`) as HTMLElement;
+      detailsContainer.style.display = 'none';
+      //find the toggleDetailsButton for this detailsContainer
+      const toggleDetailsButton = container.querySelector('.toggleDetailsButton') as HTMLElement;
+      toggleDetailsButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+    }
+  });
+}
+
 const addRotationContainer = () => {
   const newRotation: Rotation = {
     id: rotationSet?.data.length ?? 0, // Assign a unique id
@@ -228,18 +248,17 @@ const addRotationContainer = () => {
   if (!rotationSet) {
     rotationSet = {
       name: 'New Rotation Set',
-      data: [],
-      selectedIndex: 0 // Initialize with the first rotation selected
+      data: []
     }
   }
   rotationSet.data.push(newRotation);
-  renderRotationContainers();
+  hideAllButIndex(newRotation.id)
 };
 getById('addRotationContainerButton')?.addEventListener('click', addRotationContainer);
 
 const renderDropdowns = (rotationIndex: number) => {
   // Get the specific dropdown container for the given rotation index
-  const dropdownContainer = getById(`dropdown-container-${rotationIndex}`);
+  const dropdownContainer = document.getElementById(`dropdown-container-${rotationIndex}`);
   if (!dropdownContainer) {
     console.warn(`Dropdown container for rotation index ${rotationIndex} not found.`);
     return;
@@ -446,6 +465,15 @@ const saveRotationSet = (rotationSet: RotationSet) => {
 
   // Save the updated list back to localStorage
   localStorage.setItem('savedRotations', JSON.stringify(savedRotations));
+
+  // Update the saved rotations dropdown
+  populateSavedRotations();
+
+  // select the newly saved rotation
+  const rotationDropdown = getById('savedRotations') as HTMLSelectElement;
+  if (rotationDropdown) {
+    rotationDropdown.value = rotationSet.name; // Set the dropdown to the newly saved rotation
+  }
 };
 
 const handleSaveRotation = () => {
@@ -472,8 +500,7 @@ const handleSaveRotation = () => {
       data: rotation.data.map((dropdown) => ({
         selectedAbility: dropdown.selectedAbility,
       })),
-    })),
-    selectedIndex: 0
+    }))
   };
 
   saveRotationSet(newRotationSet);
@@ -483,19 +510,17 @@ const handleSaveRotation = () => {
 getById('saveButton')?.addEventListener('click', handleSaveRotation);
 
 const handleExportRotation = () => {
-  if (!rotationName.trim()) {
-    try {
-      const rotationNameInput = getById('rotation-name') as HTMLInputElement;
-      if (rotationNameInput?.value?.trim()) {
-        rotationName = rotationNameInput.value.trim();
-      } else {
-        console.error("Please enter a valid rotation name.");
-        return;
-      }
-    } catch (e) {
-      console.error(`An error occurred setting the rotation name. ${e}`);
+  try {
+    const rotationNameInput = getById('rotation-name') as HTMLInputElement;
+    if (rotationNameInput?.value?.trim()) {
+      rotationName = rotationNameInput.value.trim();
+    } else {
+      console.error("Please enter a valid rotation name.");
       return;
     }
+  } catch (e) {
+    console.error(`An error occurred setting the rotation name. ${e}`);
+    return;
   }
 
   // Create a RotationSet object for export
@@ -503,11 +528,7 @@ const handleExportRotation = () => {
     name: rotationName,
     data: rotationSet.data.map((rotation) => ({
       ...rotation,
-      dropdowns: rotation.data.map((dropdown) => ({
-        selectedAbility: dropdown.selectedAbility,
-      })),
-    })),
-    selectedIndex: 0
+    }))
   };
 
   // Convert the RotationSet to a JSON string
@@ -547,6 +568,8 @@ const handleImportRotation = () => {
       if (typeof contents === "string") {
         try {
           let parsedData = JSON.parse(contents);
+          
+          selectedIndex = 0; // Reset selected index to 0 when switching rotations
 
           if (Array.isArray(parsedData)) {
             // Handle old format (array of dropdowns or abilities)
@@ -565,8 +588,9 @@ const handleImportRotation = () => {
                   return ability ? { selectedAbility: ability } as Dropdown : null;
                 })
                 .filter((item: any) => item !== null);
-              if (parsedData) {
-                const rotationData: Dropdown[] = parsedData
+
+              if (data) {
+                const rotationData: Dropdown[] = data as Dropdown[];
 
                   // Update the current rotation set with the imported dropdowns
                   rotationSet = {
@@ -577,8 +601,7 @@ const handleImportRotation = () => {
                         name: file.name,
                         data: rotationData,
                       },
-                    ],
-                    selectedIndex: 0
+                    ]
                   };
               }
               
@@ -614,6 +637,13 @@ const handleImportRotation = () => {
 
           // Render the imported rotation set
           renderRotationContainers();
+
+          //set the rotation name and the rotation name input value to the file name
+          const rotationNameInput = getById('rotation-name') as HTMLInputElement;
+          if (rotationNameInput) {
+            rotationNameInput.value = rotationSet.name.replace(".json", ""); // Set the input value to the imported rotation name without the .json
+          }
+
         } catch (error) {
           console.error("Error parsing JSON:", error);
           alert("Invalid JSON file.");
@@ -634,6 +664,8 @@ getById('importButton')?.addEventListener('click', handleImportRotation);
 const handleSwitchRotation = (rotationSetName: string) => {
   console.log(`Switching to RotationSet: ${rotationSetName}`);
 
+  selectedIndex = 0; // Reset selected index to 0 when switching rotations
+
   // Retrieve saved rotations from localStorage
   const cachedRotations = localStorage.getItem('savedRotations');
   const savedRotations: RotationSet[] = cachedRotations ? JSON.parse(cachedRotations) : [];
@@ -650,7 +682,15 @@ const handleSwitchRotation = (rotationSetName: string) => {
   }
 
   // Render the new rotation set
+  rotationSet = selectedRotationSet;
   renderRotationContainers();
+
+  // sed the rotation name to the selected rotation name
+  const rotationNameInput = getById('rotation-name') as HTMLInputElement;
+  if (rotationNameInput) {
+    rotationNameInput.value = rotationSet.name; // Set the input value to the selected rotation name
+  }
+
   console.log(`Switched to RotationSet: ${rotationSetName}`);
 };
 getById('savedRotations')?.addEventListener('change', (e) => {
@@ -737,7 +777,7 @@ const renderRotationPreview = (rotationIndex: number) => {
     return;
   }
 
-  const previewContainer = getById(`dropdown-preview-${rotationIndex}`);
+  const previewContainer = document.getElementById(`dropdown-preview-${rotationIndex}`);
   if (!previewContainer) {
     console.error(`Preview container for rotation index ${rotationIndex} not found.`);
     return;
@@ -750,7 +790,7 @@ const renderRotationPreview = (rotationIndex: number) => {
   const selectedAbilities = rotation.data.filter((dropdown: Dropdown) => dropdown.selectedAbility !== null);
   const rowSpacer = '<span class="row-spacer"> > </span>';
 
-  const detailsContainer = getById(`rotation-details-${rotationIndex}`);
+  const detailsContainer = document.getElementById(`rotation-details-${rotationIndex}`);
   if (!detailsContainer) {
     console.error(`Details container for rotation index ${rotationIndex} not found.`);
     return;
@@ -783,7 +823,7 @@ const renderRotationPreview = (rotationIndex: number) => {
 
   if (rows.length === 0) {
     rotPreview.style.visibility = 'hidden';
-    toggleDetailsButton.style.visibility = 'hidden';
+    toggleDetailsButton.style.visibility = 'visible';
   }
   else {
     rotPreview.innerHTML = rows.join('');
@@ -835,7 +875,6 @@ function initSettings() {
 }
 
 async function setOverlayPosition() {
-  A1.once('alt1pressed', updateLocation);
   let oldPosition = sauce.getSetting('overlayPosition');
   updatingOverlayPosition = true;
   helperItems.RotationMaster?.classList.toggle(
@@ -844,7 +883,7 @@ async function setOverlayPosition() {
   );
   while (updatingOverlayPosition) {
     alt1.setTooltip('Press Alt+1 to save position');
-    let abilitiesElement = getById('Abilities');
+    let abilitiesElement = getById('OverlayCanvasOutput');
     sauce.updateSetting('overlayPosition', {
       x: Math.floor(
         A1.getMousePosition()?.x ?? 100 -
@@ -857,9 +896,31 @@ async function setOverlayPosition() {
     });
     currentOverlayPosition = sauce.getSetting('overlayPosition');
     alt1.overLayRefreshGroup('group1');
-    await sauce.timeout(200);
+    await sauce.timeout(50);
   }
   alt1.clearTooltip();
+}
+
+function alt1pressed(e: any) {
+  if (updatingOverlayPosition) {
+    updateLocation(e);
+  }
+  else {
+    cycleRotations();
+  }
+}
+
+function cycleRotations() {
+  var numRots = rotationSet?.data.length || 0;
+  if (numRots <= 1) { return; }
+
+  selectedIndex = (selectedIndex + 1) % numRots; // Cycle through rotations
+
+  //update selected value of radiobuttons in ui
+  const rotationRadios = document.querySelectorAll('input[name="rotationSelector"]');
+  rotationRadios.forEach((radio, index) => {
+    (radio as HTMLInputElement).checked = index === selectedIndex;
+  });
 }
 
 function updateLocation(e : any) {
@@ -1057,7 +1118,7 @@ getById('showPatchNotesButton')?.addEventListener('click', ShowAllPatchNotes);
 let helperItems = {
   Output: getById('output'),
   RotationMaster: getById('RotationMaster'),
-  Abilities: getById('Abilities'),
+  Abilities: getById('OverlayCanvasOutput'),
 }
 
 function startRotationMaster() {
@@ -1088,24 +1149,30 @@ function startRotationMaster() {
   }
 
   checkAndShowPatchNotes(currentVersion);
-
-  const trackedRegion = getById('rotation-preview');
-  if (trackedRegion)
-    startOverlay(trackedRegion);
+  startOverlay();
 }
 
-async function startOverlay(element: HTMLElement) {
-  const overlay = element;
-  const styles = getComputedStyle(overlay);
+async function startOverlay() {
+  
   const refreshRate = parseInt(sauce.getSetting('overlayRefreshRate'), 10);
   let overlayPosition;
 
+  A1.on('alt1pressed', alt1pressed);
+
   const updateOverlay = async () => {
-    const selectedRotation = rotationSet.data[rotationSet.selectedIndex ?? 0];
+    const selectedRotation = rotationSet.data[selectedIndex ?? 0];
+    const overlay = document.getElementById(`rotation-preview-${selectedIndex ?? 0}`);
     if (!selectedRotation) {
       console.error('No rotation is selected.');
       return;
     }
+
+    if (!overlay) {
+      console.error('Overlay element not found.');
+      return;
+    }
+
+    const styles = getComputedStyle(overlay);
 
     const uiScale = sauce.getSetting('uiScale');
     const abilitiesPerRow = sauce.getSetting('ablitiesPerRow');

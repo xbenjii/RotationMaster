@@ -39,6 +39,17 @@ html, body {
   overflow-x: auto; /* Add horizontal scrolling for content */
 }
 
+#close-patch-notes {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  cursor: pointer;
+  z-index: 1;
+  padding: 0;
+  line-height: 1;
+  width: 110px;
+}
+
 #RotationMaster {
   width: 100%;
   text-align: center;
